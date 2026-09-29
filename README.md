@@ -96,8 +96,35 @@ A conversão é o ponto crítico da aplicação e respeita as seguintes garantia
 | `PATCH` | `/api/opportunities/{id}/`          | Atualiza uma oportunidade          |
 | `PATCH` | `/api/opportunities/{id}/stage/`    | Move a oportunidade de estágio     |
 | `POST`  | `/api/opportunities/{id}/convert/`  | Converte em pedido no ERP          |
-| `GET`   | `/api/customers/`                   | Lista clientes                     |
+| `GET`   | `/api/customers/`                   | Lista clientes com totais do pipeline |
+| `GET`   | `/api/customers/{id}/`              | Detalha um cliente                 |
 | `GET`   | `/api/orders/`                      | Lista pedidos gerados              |
+| `GET`   | `/api/orders/{id}/`                 | Detalha um pedido com seus itens   |
+| `GET`   | `/api/health/`                      | Verificação de saúde (pública)     |
+
+Todas as rotas, exceto `/api/health/`, exigem o header `Authorization: Token <token>`.
+Filtros da listagem de oportunidades: `?stage=`, `?customer=` e `?search=`.
+
+Erros de regra de negócio seguem o formato do DRF, com um código estável para o front:
+
+```json
+{ "detail": "Só é possível marcar como Ganho a partir de Negociação.", "code": "invalid_stage_transition" }
+```
+
+| Código                     | HTTP | Quando                                             |
+| -------------------------- | ---- | -------------------------------------------------- |
+| `invalid_stage_transition` | 409  | Movimentação fora das regras do pipeline           |
+| `opportunity_frozen`       | 409  | Oportunidade já convertida sendo alterada          |
+| `lost_reason_required`     | 400  | Ida para Perdido sem motivo                        |
+| `erp_unavailable`          | 503  | ERP fora do ar durante a conversão                 |
+
+### Autenticação sem tela de login
+
+Esta versão não tem login: o foco do desafio é o pipeline e a conversão. A API continua
+protegida por token, e o front-end (SSR) usa o token do vendedor padrão, criado pelo comando
+`seed` a partir da variável `API_TOKEN`. O navegador nunca recebe o token, porque só o
+servidor do React Router conversa com a API. Adicionar login depois não muda o back-end:
+basta o front obter o token do usuário em vez de usar o fixo.
 
 ---
 
@@ -112,7 +139,14 @@ docker compose up --build
 ```
 
 A API sobe em `http://localhost:8000/api/` (verificação: `GET /api/health/`) e o admin
-em `http://localhost:8000/admin/`.
+em `http://localhost:8000/admin/`. Na subida, o compose aplica as migrations e roda o
+`seed`, que cria vendedores, clientes e oportunidades de exemplo. Para testar a API:
+
+```bash
+curl -H "Authorization: Token dev-only-api-token" http://localhost:8000/api/opportunities/
+```
+
+Para simular o ERP fora do ar: `ERP_SIMULATE_FAILURE=True docker compose up`.
 
 Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.md`](front/README.md).
 
@@ -122,8 +156,8 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 
 - [x] Estrutura do repositório e ambiente
 - [x] Modelagem e migrations
-- [ ] API REST do CRM
-- [ ] Módulo ERP e criação de pedidos
+- [x] API REST do CRM
+- [x] Módulo ERP e criação de pedidos
 - [ ] Regra de conversão com idempotência
 - [ ] Front-end com SSR
 - [ ] Kanban com drag and drop

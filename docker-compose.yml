@@ -25,8 +25,11 @@ services:
       SECRET_KEY: dev-only-insecure-key
       ALLOWED_HOSTS: localhost,127.0.0.1,api
       DATABASE_URL: postgres://ozio:ozio@db:5432/ozio
+      API_TOKEN: dev-only-api-token
+      ERP_SIMULATE_FAILURE: ${ERP_SIMULATE_FAILURE:-False}
     command: >
       sh -c "python manage.py migrate --noinput &&
+             python manage.py seed &&
              python manage.py runserver 0.0.0.0:8000"
     ports:
       - "8000:8000"

@@ -79,3 +79,20 @@ Cobertura prioritária:
 | `DEBUG`         | `True` em desenvolvimento                   |
 | `ALLOWED_HOSTS` | Hosts aceitos, separados por vírgula        |
 | `DATABASE_URL`  | String de conexão do PostgreSQL             |
+| `API_TOKEN`     | Token do vendedor padrão, usado pelo front-end; o `seed` o registra |
+| `ERP_GATEWAY`   | Implementação do ERP (padrão: `erp.services.LocalErpGateway`) |
+| `ERP_SIMULATE_FAILURE` | `True` faz o ERP simulado responder como indisponível |
+
+## Fronteira com o ERP
+
+O CRM fala com o ERP apenas por `erp/services.py`: monta um `OrderRequest` e recebe um
+`OrderReceipt`. Qualquer implementação de `ErpGateway` precisa ser idempotente pela
+`idempotency_key` e sinalizar indisponibilidade com `ErpUnavailable`. A numeração dos
+pedidos (`PED-000001`) vem de uma sequence do PostgreSQL, sem colisão em conversões
+simultâneas.
+
+## Regras de negócio
+
+Ficam em `crm/services.py`, não nas views. Cada alteração trava a linha da oportunidade
+com `select_for_update`, e toda mudança de estágio grava um registro de auditoria em
+`OpportunityStageChange`.
