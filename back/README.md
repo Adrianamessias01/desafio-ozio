@@ -7,6 +7,7 @@ API REST em Django + Django REST Framework, com PostgreSQL.
 ```
 back/
 ├── config/          Configuração do projeto Django
+├── core/            Base compartilhada (modelo com timestamps, health check)
 ├── crm/             Oportunidades, clientes e estágios do pipeline
 ├── erp/             Pedidos — tratado como sistema externo
 ├── requirements.txt
@@ -17,12 +18,33 @@ A separação entre `crm` e `erp` é intencional: o CRM não manipula as tabelas
 diretamente, apenas chama a camada de serviço do ERP. Isso mantém a fronteira explícita
 e permite substituir o ERP simulado por um sistema real sem tocar nas regras do pipeline.
 
-## Executando
+Por isso não existe chave estrangeira entre os dois contextos. A oportunidade guarda
+apenas o número do pedido (`erp_order_number`), e o pedido guarda uma cópia dos dados do
+cliente e uma `idempotency_key` única, que impede pedidos duplicados no nível do banco.
+
+## Executando com Docker (recomendado)
+
+Na raiz do repositório:
+
+```bash
+docker compose up --build
+docker compose exec api python manage.py createsuperuser
+```
+
+Comandos úteis:
+
+```bash
+docker compose exec api python manage.py test        # testes
+docker compose exec api ruff check .                 # lint
+docker compose exec api python manage.py makemigrations
+```
+
+## Executando localmente
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 
 cp .env.example .env           # ajuste as credenciais do PostgreSQL
 
@@ -39,6 +61,9 @@ API disponível em `http://localhost:8000/api/`.
 python manage.py test
 ```
 
+Os testes rodam contra PostgreSQL, porque as regras de integridade (check constraints,
+`unique`, `select_for_update`) dependem do banco real.
+
 Cobertura prioritária:
 
 - transição de estágios da oportunidade
@@ -48,8 +73,9 @@ Cobertura prioritária:
 
 ## Variáveis de ambiente
 
-| Variável       | Descrição                        |
-| -------------- | -------------------------------- |
-| `SECRET_KEY`   | Chave secreta do Django          |
-| `DEBUG`        | `True` em desenvolvimento        |
-| `DATABASE_URL` | String de conexão do PostgreSQL  |
+| Variável        | Descrição                                   |
+| --------------- | ------------------------------------------- |
+| `SECRET_KEY`    | Chave secreta do Django                     |
+| `DEBUG`         | `True` em desenvolvimento                   |
+| `ALLOWED_HOSTS` | Hosts aceitos, separados por vírgula        |
+| `DATABASE_URL`  | String de conexão do PostgreSQL             |

@@ -48,6 +48,15 @@ Lead → Qualificação → Proposta → Negociação → Ganho
                                             └→ Perdido
 ```
 
+Regras de transição (código em `back/crm/stages.py`):
+
+- Os estágios abertos (Lead, Qualificação, Proposta e Negociação) podem ir e voltar entre si.
+- Ganho só é alcançado a partir de Negociação.
+- Qualquer estágio aberto pode ir para Perdido, e uma oportunidade Perdida pode ser
+  reaberta como Lead.
+- Uma oportunidade Ganha pode voltar para Negociação enquanto não for convertida. Depois
+  da conversão, ela fica congelada.
+
 ### ERP — pedidos
 
 | Entidade    | Descrição                                          |
@@ -63,7 +72,7 @@ alterar as regras do pipeline.
 
 ## Regra central: conversão em pedido
 
-`POST /api/opportunities/{id}/convert`
+`POST /api/opportunities/{id}/convert/`
 
 A conversão é o ponto crítico da aplicação e respeita as seguintes garantias:
 
@@ -99,7 +108,11 @@ Pré-requisitos: Docker e Docker Compose, ou Python 3.12+ e Node 20+ com Postgre
 ```bash
 git clone <url-deste-repositorio>
 cd desafio-ozio
+docker compose up --build
 ```
+
+A API sobe em `http://localhost:8000/api/` (verificação: `GET /api/health/`) e o admin
+em `http://localhost:8000/admin/`.
 
 Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.md`](front/README.md).
 
@@ -107,8 +120,8 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 
 ## Andamento
 
-- [ ] Estrutura do repositório e ambiente
-- [ ] Modelagem e migrations
+- [x] Estrutura do repositório e ambiente
+- [x] Modelagem e migrations
 - [ ] API REST do CRM
 - [ ] Módulo ERP e criação de pedidos
 - [ ] Regra de conversão com idempotência
