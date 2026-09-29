@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.sqlite3
+.env
+
+# Node
+node_modules/
+.react-router/
+build/
+dist/
+.cache/
+*.log
+
+# Editores
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
