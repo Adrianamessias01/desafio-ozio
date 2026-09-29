@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ozio
+      POSTGRES_USER: ozio
+      POSTGRES_PASSWORD: ozio
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ozio -d ozio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./back
+      args:
+        INSTALL_DEV: "true"
+    environment:
+      DEBUG: "True"
+      SECRET_KEY: dev-only-insecure-key
+      ALLOWED_HOSTS: localhost,127.0.0.1,api
+      DATABASE_URL: postgres://ozio:ozio@db:5432/ozio
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./back:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
