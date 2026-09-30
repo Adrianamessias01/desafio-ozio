@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, Outlet, useLocation, useNavigation } from "react-router";
+import { Link, NavLink, Outlet, useLocation, useNavigation } from "react-router";
 
-import { BoardIcon } from "~/components/icons";
+import { BoardIcon, BuildingIcon, ReceiptIcon } from "~/components/icons";
 import { api } from "~/lib/api.server";
 import { initials } from "~/lib/format";
 import type { Route } from "./+types/shell";
@@ -43,6 +43,17 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
             <BoardIcon />
             Pipeline
           </Link>
+          <NavLink to="/customers" className="nav-item">
+            <BuildingIcon />
+            Clientes
+          </NavLink>
+        </nav>
+        <nav className="nav-group" aria-label="ERP">
+          <div className="nav-label">ERP</div>
+          <NavLink to="/orders" className="nav-item">
+            <ReceiptIcon />
+            Pedidos
+          </NavLink>
         </nav>
         {me && (
           <div className="sidebar-foot">

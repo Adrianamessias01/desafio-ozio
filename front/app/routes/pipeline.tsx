@@ -13,9 +13,10 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
-import { Link, Outlet, isRouteErrorResponse, useFetcher, useFetchers, useSubmit } from "react-router";
+import { Link, Outlet, useFetcher, useFetchers, useSubmit } from "react-router";
 
 import { LostReasonDialog } from "~/components/lost-reason-dialog";
+import { PageError } from "~/components/page-error";
 import { useToast } from "~/components/toast";
 import { ApiError, actionError, api, loadOrThrow } from "~/lib/api.server";
 import { date, initials, money, moneyShort } from "~/lib/format";
@@ -334,18 +335,5 @@ function MoveErrorWatcher({ id }: { id: number }) {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  const message = isRouteErrorResponse(error) && typeof error.data === "string"
-    ? error.data
-    : "Não foi possível carregar o pipeline.";
-  return (
-    <div className="error-page">
-      <h1>Pipeline indisponível</h1>
-      <p className="sub">{message}</p>
-      <p>
-        <a className="btn" href="/">
-          Tentar de novo
-        </a>
-      </p>
-    </div>
-  );
+  return <PageError error={error} title="Pipeline indisponível" />;
 }
