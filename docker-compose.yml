@@ -89,5 +89,22 @@ services:
     depends_on:
       - api
 
+  # Testes de navegador (Playwright). Não sobe com o `up`; rode com:
+  #   docker compose --profile e2e run --rm e2e
+  e2e:
+    profiles: ["e2e"]
+    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    working_dir: /e2e
+    environment:
+      BASE_URL: http://web:3000
+      API_URL: http://api:8000/api
+      CI: ${CI:-}
+    volumes:
+      - ./e2e:/e2e
+      - /e2e/node_modules
+    command: sh -c "npm ci --no-audit --no-fund && npx playwright test"
+    depends_on:
+      - web
+
 volumes:
   pgdata:

@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
       tsconfigPaths: true,
     },
     server: {
+      // "web" é o nome do serviço no compose, usado pelos testes de navegador (e2e).
+      allowedHosts: ["web"],
       // Em volumes montados no Windows/Docker os eventos de arquivo não chegam ao container.
       watch: process.env.WATCH_POLLING === "true" ? { usePolling: true, interval: 300 } : undefined,
     },
