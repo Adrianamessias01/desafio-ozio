@@ -12,7 +12,11 @@ from pathlib import Path
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
+from core.env import load_env_file
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_env_file(BASE_DIR / ".env")
 
 
 def env_bool(name: str, default: bool = False) -> bool:
