@@ -19,3 +19,12 @@ def health(request):
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
     return Response({"status": "ok", "database": "up"})
+
+
+@api_view(["GET"])
+def me(request):
+    """Usuário dono do token; o front-end usa para mostrar quem está operando."""
+    user = request.user
+    return Response(
+        {"id": user.id, "username": user.username, "name": user.get_full_name() or user.username}
+    )

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -47,6 +49,13 @@ class OpportunitySerializer(serializers.ModelSerializer):
         source="customer", queryset=Customer.objects.all(), write_only=True
     )
     owner = UserSummarySerializer(read_only=True)
+    # Declarado aqui para trocar a mensagem padrão do Django por uma mais direta.
+    amount = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+        error_messages={"min_value": "Informe um valor maior que zero."},
+    )
     stage_label = serializers.CharField(source="get_stage_display", read_only=True)
     is_converted = serializers.BooleanField(read_only=True)
 

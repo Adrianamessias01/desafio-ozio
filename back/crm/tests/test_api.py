@@ -44,6 +44,13 @@ class AuthenticationTests(ApiTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_me_returns_token_owner(self):
+        response = self.client.get(reverse("me"))
+
+        self.assertEqual(
+            response.data, {"id": self.user.pk, "username": "carla", "name": "Carla Souza"}
+        )
+
     def test_health_check_is_public(self):
         self.client.force_authenticate(None)
 
@@ -87,7 +94,7 @@ class OpportunityCrudTests(ApiTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("amount", response.data)
+        self.assertEqual(response.data["amount"], ["Informe um valor maior que zero."])
 
     def test_list_filters_by_stage(self):
         self.make_opportunity(title="Lead")
