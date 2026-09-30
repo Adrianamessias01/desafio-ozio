@@ -1,4 +1,5 @@
-from rest_framework import viewsets
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, viewsets
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -27,6 +28,10 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         return Order.objects.prefetch_related("items").order_by(ordering, "number")
 
 
+@extend_schema(
+    tags=["erp"],
+    responses=inline_serializer("ErpStatus", {"available": serializers.BooleanField()}),
+)
 @api_view(["GET"])
 def erp_status(request):
     """Se o ERP está no ar; o front usa para mostrar o status da integração."""

@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework.authtoken",
+    "drf_spectacular",
     "core",
     "crm",
     "erp",
@@ -131,6 +132,22 @@ REST_FRAMEWORK = {
         *(["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []),
     ],
     "COERCE_DECIMAL_TO_STRING": True,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Limite de tentativas de login por IP, contra adivinhação de senha.
+    "DEFAULT_THROTTLE_RATES": {"login": os.environ.get("LOGIN_RATE", "10/min")},
+}
+
+# Documentação interativa da API em /api/docs/ (Swagger) e esquema em /api/schema/.
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Pipeline Comercial — API",
+    "DESCRIPTION": (
+        "CRM (oportunidades, clientes, estágios e conversão) e ERP (pedidos). "
+        "Faça login em POST /api/auth/login/ e use o token em Authorize: `Token <token>`."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_NAME_OVERRIDES": {"StageEnum": "crm.stages.Stage"},
 }
 
 
@@ -138,6 +155,16 @@ REST_FRAMEWORK = {
 # faz o ERP simulado responder como indisponível, para demonstrar o tratamento de erro.
 ERP_GATEWAY = os.environ.get("ERP_GATEWAY", "erp.services.LocalErpGateway")
 ERP_SIMULATE_FAILURE = env_bool("ERP_SIMULATE_FAILURE")
+
+
+# Produção (DEBUG desligado): cookies só por HTTPS e cabeçalhos de segurança.
+# Conferir com `python manage.py check --deploy`.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "same-origin"
 
 
 LOGGING = {

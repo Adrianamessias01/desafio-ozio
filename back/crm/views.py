@@ -4,7 +4,8 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
-from rest_framework import mixins, status, viewsets
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -88,6 +89,7 @@ class OpportunityViewSet(
     def perform_destroy(self, instance):
         services.delete_opportunity(instance.pk)
 
+    @extend_schema(request=StageMoveSerializer, responses=OpportunityDetailSerializer)
     @action(detail=True, methods=["patch"])
     def stage(self, request, pk=None):
         opportunity = self.get_object()
@@ -102,6 +104,17 @@ class OpportunityViewSet(
         )
         return Response(OpportunityDetailSerializer(_reload(opportunity.pk)).data)
 
+    @extend_schema(
+        request=None,
+        responses=inline_serializer(
+            "ConversionResult",
+            {
+                "order_number": serializers.CharField(),
+                "created": serializers.BooleanField(),
+                "opportunity": OpportunityDetailSerializer(),
+            },
+        ),
+    )
     @action(detail=True, methods=["post"])
     def convert(self, request, pk=None):
         """201 quando o pedido é criado agora; 200 quando a oportunidade já estava convertida."""
@@ -156,6 +169,7 @@ class CustomerViewSet(
         ).order_by(ordering, "name")
 
 
+@extend_schema(responses=UserSummarySerializer(many=True))
 @api_view(["GET"])
 def sellers(request):
     """Vendedores (usuários ativos que não são administradores), para filtros do pipeline."""
