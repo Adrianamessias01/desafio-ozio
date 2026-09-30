@@ -5,6 +5,14 @@ Desafio técnico — **OZIO Tecnologia** · Desenvolvedor Full Stack Pleno
 Aplicação onde vendedores gerenciam oportunidades comerciais em um quadro kanban e
 convertem uma oportunidade ganha em um pedido no ERP.
 
+![Kanban do pipeline](docs/screenshots/kanban.png)
+
+| Arrastando: colunas permitidas destacadas | ERP fora do ar: erro tratado na tela |
+| --- | --- |
+| ![Arrastando um card](docs/screenshots/kanban-arrastando.png) | ![Erro do ERP](docs/screenshots/erro-erp.png) |
+| **Oportunidade convertida (tema escuro)** | **Pedidos gerados no ERP** |
+| ![Convertida](docs/screenshots/convertida-tema-escuro.png) | ![Pedidos](docs/screenshots/pedidos.png) |
+
 ---
 
 ## Estrutura do repositório
@@ -12,7 +20,8 @@ convertem uma oportunidade ganha em um pedido no ERP.
 ```
 .
 ├── back/     API REST em Django + Django REST Framework + PostgreSQL
-└── front/    Aplicação React com React Router (SSR)
+├── front/    Aplicação React com React Router (SSR)
+└── docs/     Capturas de tela
 ```
 
 Cada pasta tem seu próprio README com instruções de execução.
@@ -26,7 +35,9 @@ Cada pasta tem seu próprio README com instruções de execução.
 | Back-end  | Python, Django, Django REST Framework       |
 | Banco     | PostgreSQL                                  |
 | Front-end | React, React Router (server-side rendering) |
+| Kanban    | dnd-kit (mouse, toque e teclado)            |
 | API       | RESTful                                     |
+| Ambiente  | Docker Compose (banco, API e front)         |
 
 ---
 
@@ -160,16 +171,72 @@ docker compose up --build
 ```
 
 A aplicação abre em **`http://localhost:3000`**. A API sobe em `http://localhost:8000/api/`
-(verificação: `GET /api/health/`) e o admin em `http://localhost:8000/admin/`. Na subida, o compose aplica as migrations e roda o
-`seed`, que cria vendedores, clientes e oportunidades de exemplo. Para testar a API:
+(verificação: `GET /api/health/`) e o admin em `http://localhost:8000/admin/`. Na subida, o
+compose aplica as migrations e roda o `seed`, que cria vendedores, clientes e oportunidades
+de exemplo. Para chamar a API direto:
 
 ```bash
 curl -H "Authorization: Token dev-only-api-token" http://localhost:8000/api/opportunities/
 ```
 
-Para simular o ERP fora do ar: `ERP_SIMULATE_FAILURE=True docker compose up`.
-
 Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.md`](front/README.md).
+
+### Roteiro para avaliar
+
+1. **Arrastar e soltar:** leve "Renovação de licenças 2027" de Lead para Qualificação. O card
+   muda na hora (atualização otimista) e a mudança fica registrada no histórico.
+2. **Regra de transição:** tente levar um card de Proposta direto para Ganho. A coluna aparece
+   como "Não permitido" e um aviso explica o motivo.
+3. **Perdido:** solte um card em Perdido. Um modal pede o motivo da perda.
+4. **Cadastro:** use "+ Nova oportunidade". Ela entra como Lead.
+5. **Conversão:** mova "Migração de ERP legado" de Negociação para Ganho, clique no card e use
+   "Converter em pedido". O pedido aparece em **Pedidos**, e "Converter novamente" devolve
+   o mesmo número, sem duplicar.
+6. **ERP fora do ar:** suba a API com a falha simulada e tente converter outra oportunidade
+   ganha. A tela mostra o erro, nada é gravado e o botão vira "Tentar novamente".
+
+   ```bash
+   ERP_SIMULATE_FAILURE=True docker compose up -d api                   # bash
+   $env:ERP_SIMULATE_FAILURE="True"; docker compose up -d api           # PowerShell
+   ```
+
+   Para voltar ao normal, repita o comando com `False`.
+
+---
+
+## Decisões técnicas
+
+- **CRM e ERP sem chave estrangeira entre si.** O CRM guarda só o número do pedido, e o ERP
+  guarda uma cópia dos dados do cliente. A única porta entre eles é `erp/services.py`
+  (`ErpGateway`), então o ERP simulado pode virar um cliente HTTP de um ERP real sem mexer
+  nas regras do pipeline.
+- **Regras na camada de serviço.** Views só validam formato; `crm/services.py` aplica as regras
+  e trava a linha da oportunidade (`select_for_update`) em toda alteração.
+- **Idempotência em duas camadas.** A oportunidade convertida responde sem chamar o ERP, e a
+  `idempotency_key` única no banco do ERP protege contra repetições que cheguem até ele.
+- **Erros com código estável** (`{"detail", "code"}`), para o front decidir o que mostrar sem
+  depender do texto da mensagem.
+- **SSR com o token só no servidor.** O navegador fala apenas com o servidor do React Router,
+  que chama a API. Assim o token não vaza e a primeira resposta já chega com o kanban pronto.
+- **Atualização otimista derivada do estado do fetcher**, sem cópia local dos dados: se a API
+  recusar a movimentação, o card volta sozinho para a coluna de origem.
+- **Regras de transição espelhadas no front** (`front/app/lib/stages.ts`) só para orientar o
+  arrastar; quem decide é sempre o back-end.
+
+---
+
+## Testes
+
+```bash
+docker compose exec api python manage.py test    # 63 testes do back-end
+docker compose exec api ruff check .             # lint
+docker compose exec web npm run typecheck        # tipos do front-end
+```
+
+Os testes do back-end cobrem transições de estágio, bloqueio da conversão fora de Ganho,
+idempotência, rollback quando o ERP falha e duas conversões simultâneas da mesma oportunidade.
+O front-end foi validado em navegador (Chromium) nos fluxos do roteiro acima, em desktop,
+celular e tema escuro.
 
 ---
 
@@ -182,9 +249,9 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 - [x] Regra de conversão com idempotência
 - [x] Front-end com SSR
 - [x] Kanban com drag and drop
-- [ ] Conversão pela interface
-- [ ] Testes
-- [ ] Ajustes visuais e documentação final
+- [x] Conversão pela interface
+- [x] Testes
+- [x] Ajustes visuais e documentação final
 
 ---
 

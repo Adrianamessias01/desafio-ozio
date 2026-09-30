@@ -23,7 +23,10 @@ front/
 
 Os dados do pipeline são carregados no servidor pelos `loader` das rotas, de modo que a
 primeira resposta já chega com o kanban montado. As alterações (mover um card, criar uma
-oportunidade) passam por `action`.
+oportunidade, converter em pedido) passam por `action`.
+
+Erros de carregamento aparecem dentro da página, mantendo o menu lateral. Erros de ação
+(regra de transição, ERP fora do ar) aparecem como aviso ou na própria gaveta.
 
 Só o servidor do React Router conversa com a API. O token fica em `API_TOKEN`, no servidor,
 e nunca é enviado ao navegador.
@@ -43,7 +46,8 @@ e nunca é enviado ao navegador.
 ## Executando
 
 Com Docker, na raiz do repositório: `docker compose up --build`. O front sobe em
-`http://localhost:3000`.
+`http://localhost:3000`, com recarregamento automático ao editar os arquivos. Ao mudar o
+`package.json`, recrie o container com `docker compose up -d --build -V web`.
 
 Sem Docker (Node 20+ e a API rodando em `localhost:8000`):
 
@@ -84,4 +88,17 @@ npm run typecheck
 | -------------------- | -------------------------------------------------- |
 | `/`                  | Kanban do pipeline, com arrastar e soltar          |
 | `/opportunities/new` | Cadastro de oportunidade (gaveta sobre o kanban)   |
-| `/opportunities/:id` | Detalhe da oportunidade (gaveta sobre o kanban)    |
+| `/opportunities/:id` | Detalhe, mudança de estágio e conversão em pedido  |
+| `/customers`         | Clientes com os totais do pipeline                 |
+| `/orders`            | Pedidos gerados no ERP                             |
+
+## Conversão em pedido
+
+Na gaveta de detalhe de uma oportunidade em Ganho, o botão "Converter em pedido" chama a
+action da rota, que chama `POST /opportunities/{id}/convert/`.
+
+- Durante a chamada o botão mostra "Criando pedido…" e fica desabilitado.
+- Se o ERP estiver fora do ar (`503`, código `erp_unavailable`), a mensagem da API aparece
+  na própria gaveta e o botão vira "Tentar novamente". Nada muda no kanban.
+- Depois da conversão, a gaveta mostra o número do pedido e o card ganha o selo do pedido.
+  "Converter novamente" devolve o mesmo pedido, deixando a idempotência visível.
