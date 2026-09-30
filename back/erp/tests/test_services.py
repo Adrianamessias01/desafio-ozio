@@ -112,6 +112,11 @@ class OrderApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("ordering", response.data)
 
+    def test_erp_status_reports_availability(self):
+        self.assertEqual(self.client.get(reverse("erp-status")).data, {"available": True})
+        with override_settings(ERP_SIMULATE_FAILURE=True):
+            self.assertEqual(self.client.get(reverse("erp-status")).data, {"available": False})
+
     def test_orders_are_read_only(self):
         response = self.client.post(reverse("order-list"), {}, format="json")
 

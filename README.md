@@ -132,11 +132,14 @@ Depois de convertida, a oportunidade fica congelada: não muda de estágio nem �
 | `GET`   | `/api/customers/{id}/`              | Detalha um cliente                 |
 | `GET`   | `/api/orders/`                      | Lista pedidos gerados              |
 | `GET`   | `/api/orders/{id}/`                 | Detalha um pedido com seus itens   |
+| `GET`   | `/api/sellers/`                     | Vendedores, para o filtro do kanban |
+| `GET`   | `/api/erp/status/`                  | Se o ERP está disponível           |
 | `GET`   | `/api/me/`                          | Usuário dono do token              |
 | `GET`   | `/api/health/`                      | Verificação de saúde (pública)     |
 
 Todas as rotas, exceto `/api/health/`, exigem o header `Authorization: Token <token>`.
-Filtros da listagem de oportunidades: `?stage=`, `?customer=` e `?search=`. A listagem de
+Filtros da listagem de oportunidades: `?stage=`, `?customer=`, `?owner=`, `?search=` e
+`?close_from=`/`?close_to=` (AAAA-MM-DD, sobre a previsão de fechamento). A listagem de
 clientes aceita `?ordering=` com `name`, `document`, `open_count`, `won_count` ou
 `open_amount`, e a de pedidos com `number`, `customer_name`, `status`, `created_at` ou
 `total` (prefixo `-` para decrescente).
@@ -240,7 +243,7 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 ## Testes
 
 ```bash
-docker compose exec api python manage.py test    # 74 testes do back-end
+docker compose exec api python manage.py test    # 80 testes do back-end
 docker compose exec api ruff check .             # lint
 docker compose exec web npm run typecheck        # tipos do front-end
 ```

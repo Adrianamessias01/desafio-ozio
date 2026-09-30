@@ -15,6 +15,13 @@ import type {
 const BASE_URL = (process.env.API_BASE_URL ?? "http://localhost:8000/api").replace(/\/$/, "");
 const TOKEN = process.env.API_TOKEN ?? "";
 
+export interface PipelineFilters {
+  search?: string;
+  owner?: string;
+  closeFrom?: string;
+  closeTo?: string;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -98,11 +105,20 @@ export function actionError<Extra extends object = {}>(error: unknown, extra?: E
 export const api = {
   me: () => request<UserSummary>("/me/"),
 
-  /** `search`: filtra por título ou nome do cliente. */
-  listOpportunities: (search = "") =>
-    request<Opportunity[]>(
-      search ? `/opportunities/?search=${encodeURIComponent(search)}` : "/opportunities/",
-    ),
+  /** Filtros opcionais: texto (título ou cliente), vendedor e período da previsão de fechamento. */
+  listOpportunities: (filters: PipelineFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.search) params.set("search", filters.search);
+    if (filters.owner) params.set("owner", filters.owner);
+    if (filters.closeFrom) params.set("close_from", filters.closeFrom);
+    if (filters.closeTo) params.set("close_to", filters.closeTo);
+    const query = params.toString();
+    return request<Opportunity[]>(`/opportunities/${query ? `?${query}` : ""}`);
+  },
+
+  sellers: () => request<UserSummary[]>("/sellers/"),
+
+  erpStatus: () => request<{ available: boolean }>("/erp/status/"),
 
   getOpportunity: (id: number) => request<OpportunityDetail>(`/opportunities/${id}/`),
 

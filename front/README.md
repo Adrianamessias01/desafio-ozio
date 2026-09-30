@@ -86,7 +86,7 @@ npm run typecheck
 
 | Rota                 | Descrição                                          |
 | -------------------- | -------------------------------------------------- |
-| `/`                  | Kanban do pipeline, com arrastar e soltar. A busca da barra superior filtra por título ou cliente (`?q=`) |
+| `/`                  | Kanban do pipeline, com arrastar e soltar. Busca da barra superior (`?q=`), filtro por vendedor (`?owner=`) e por período da previsão de fechamento (`?from=`/`?to=`), todos na URL. Abaixo do quadro, o status do ERP |
 | `/opportunities/new` | Cadastro de oportunidade (gaveta sobre o kanban)   |
 | `/opportunities/:id` | Detalhe, mudança de estágio, conversão e exclusão  |
 | `/customers`         | Clientes com os totais do pipeline, ordenáveis pelo título da coluna (`?sort=` e `?dir=` na URL) |

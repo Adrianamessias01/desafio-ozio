@@ -1,8 +1,11 @@
 from rest_framework import viewsets
+from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 
 from .models import Order
 from .serializers import OrderSerializer
+from .services import get_erp_gateway
 
 
 class OrderViewSet(viewsets.ReadOnlyModelViewSet):
@@ -22,3 +25,9 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             raise ValidationError({"ordering": f"Ordenação inválida: {ordering}."})
         # O número desempata, para a ordem ser estável entre valores iguais.
         return Order.objects.prefetch_related("items").order_by(ordering, "number")
+
+
+@api_view(["GET"])
+def erp_status(request):
+    """Se o ERP está no ar; o front usa para mostrar o status da integração."""
+    return Response({"available": get_erp_gateway().is_available()})

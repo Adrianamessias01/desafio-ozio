@@ -18,18 +18,16 @@ import { Link, Outlet, useFetcher, useFetchers, useLocation, useSubmit } from "r
 import {
   BuildingIcon,
   CalendarIcon,
-  ClockIcon,
-  ReceiptIcon,
-  TrophyIcon,
-  WalletIcon,
+  CheckCircleIcon,
+  InfoIcon,
+  UserIcon,
 } from "~/components/icons";
 import { LostReasonDialog } from "~/components/lost-reason-dialog";
 import { PageError } from "~/components/page-error";
-import { Stat } from "~/components/stat";
 import { useToast } from "~/components/toast";
 import { ApiError, actionError, api, loadOrThrow } from "~/lib/api.server";
-import { date, initials, money, moneyShort } from "~/lib/format";
-import { OPEN_STAGES, STAGES, blockReason, canMove, isStage, moveKey } from "~/lib/stages";
+import { date, initials, money } from "~/lib/format";
+import { STAGES, blockReason, canMove, isStage, moveKey } from "~/lib/stages";
 import type { Opportunity, StageKey } from "~/lib/types";
 import type { Route } from "./+types/pipeline";
 
@@ -38,9 +36,20 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const search = new URL(request.url).searchParams.get("q")?.trim() ?? "";
-  const opportunities = await loadOrThrow(() => api.listOpportunities(search));
-  return { opportunities, search };
+  const params = new URL(request.url).searchParams;
+  const filters = {
+    search: params.get("q")?.trim() ?? "",
+    owner: params.get("owner") ?? "",
+    closeFrom: params.get("from") ?? "",
+    closeTo: params.get("to") ?? "",
+  };
+  const [opportunities, sellers, erp] = await Promise.all([
+    loadOrThrow(() => api.listOpportunities(filters)),
+    api.sellers().catch(() => []),
+    // Status do ERP é informativo: se a consulta falhar, a faixa mostra "desconhecido".
+    api.erpStatus().catch(() => null),
+  ]);
+  return { opportunities, sellers, erpAvailable: erp?.available ?? null, filters };
 }
 
 /** Movimentação de estágio vinda do kanban (e da gaveta de detalhe). */
@@ -125,9 +134,18 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
     if (justDragged.current) event.preventDefault();
   }
 
-  const sum = (items: Opportunity[]) => items.reduce((total, o) => total + Number(o.amount), 0);
-  const open = opportunities.filter((o) => OPEN_STAGES.includes(o.stage));
-  const won = opportunities.filter((o) => o.stage === "won");
+  // Filtros vão para a URL (GET): recarregar ou compartilhar mantém a visão.
+  // Campos vazios saem da URL para ela continuar limpa.
+  function applyFilters(form: HTMLFormElement) {
+    const next = new URLSearchParams();
+    for (const [key, value] of new FormData(form)) {
+      if (typeof value === "string" && value) next.set(key, value);
+    }
+    submit(next, { method: "get", action: "/", replace: true, preventScrollReset: true });
+  }
+
+  const { filters } = loaderData;
+  const filtering = Boolean(filters.search || filters.owner || filters.closeFrom || filters.closeTo);
 
   return (
     <>
@@ -136,36 +154,62 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
           <h1>Pipeline de oportunidades</h1>
           <p className="sub">Arraste os cards entre as colunas para mudar o estágio.</p>
         </div>
+        <form
+          className="filters"
+          role="search"
+          aria-label="Filtros do pipeline"
+          onChange={(event) => applyFilters(event.currentTarget)}
+          onSubmit={(event) => {
+            event.preventDefault();
+            applyFilters(event.currentTarget);
+          }}
+        >
+          {filters.search && <input type="hidden" name="q" value={filters.search} />}
+          <label className="filter-field">
+            <UserIcon />
+            <span className="sr-only">Vendedor</span>
+            <select name="owner" defaultValue={filters.owner} key={`owner-${filters.owner}`}>
+              <option value="">Todos os vendedores</option>
+              {loaderData.sellers.map((seller) => (
+                <option key={seller.id} value={seller.id}>
+                  {seller.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="filter-field" title="Previsão de fechamento">
+            <CalendarIcon />
+            <input
+              type="date"
+              name="from"
+              aria-label="Previsão de fechamento a partir de"
+              defaultValue={filters.closeFrom}
+              key={`from-${filters.closeFrom}`}
+            />
+            <span aria-hidden="true">–</span>
+            <input
+              type="date"
+              name="to"
+              aria-label="Previsão de fechamento até"
+              defaultValue={filters.closeTo}
+              key={`to-${filters.closeTo}`}
+            />
+          </div>
+        </form>
         <Link to={`/opportunities/new${search}`} preventScrollReset className="btn btn-primary">
           + Nova oportunidade
         </Link>
       </div>
 
-      {loaderData.search && (
+      {filtering && (
         <p className="search-note" role="status">
-          {opportunities.length} resultado(s) para “{loaderData.search}”.
+          {opportunities.length} oportunidade(s)
+          {filters.search ? ` para “${filters.search}”` : ""} com os filtros aplicados.
           <Link to="/" className="btn">
-            Limpar busca
+            Limpar filtros
           </Link>
         </p>
       )}
-
-      <div className="stats">
-        <Stat label="Em aberto" value={money(sum(open))} icon={<WalletIcon />} tone="var(--accent)" />
-        <Stat label="Ganho" value={money(sum(won))} icon={<TrophyIcon />} tone="var(--st-won)" />
-        <Stat
-          label="Aguardando pedido"
-          value={String(won.filter((o) => !o.is_converted).length)}
-          icon={<ClockIcon />}
-          tone="var(--st-negotiation)"
-        />
-        <Stat
-          label="Pedidos no ERP"
-          value={String(won.filter((o) => o.is_converted).length)}
-          icon={<ReceiptIcon />}
-          tone="var(--st-proposal)"
-        />
-      </div>
 
       <DndContext
         id="pipeline-board"
@@ -199,6 +243,15 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
         </DragOverlay>
       </DndContext>
 
+      <div className="erp-banner">
+        <InfoIcon />
+        <p>
+          <strong>Integração com ERP:</strong> quando uma oportunidade chega em Ganho, abra o card
+          e use “Converter em pedido” para criar o pedido no ERP.
+        </p>
+        <ErpStatus available={loaderData.erpAvailable} />
+      </div>
+
       {loaderData.opportunities.map((o) => (
         <MoveErrorWatcher key={o.id} id={o.id} />
       ))}
@@ -216,6 +269,21 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
 
       <Outlet />
     </>
+  );
+}
+
+function ErpStatus({ available }: { available: boolean | null }) {
+  const [state, label] =
+    available === null
+      ? ["unknown", "Status do ERP desconhecido"]
+      : available
+        ? ["ok", "ERP conectado"]
+        : ["down", "ERP indisponível"];
+  return (
+    <span className="erp-status" data-state={state}>
+      <span className="erp-dot" aria-hidden="true" />
+      {label}
+    </span>
   );
 }
 
@@ -251,11 +319,9 @@ function Column({
       style={{ "--c": `var(--st-${stage.key})` } as React.CSSProperties}
       aria-label={stage.label}
     >
-      <div className="col-head">
-        <span className="dot" />
+      <div className="col-head" title={`Total: ${money(total)}`}>
         <span className="col-name">{stage.label}</span>
         <span className="col-count">{items.length}</span>
-        <span className="col-sum">{moneyShort(total)}</span>
       </div>
       <div className="col-body">
         {drop && <div className="col-hint">{drop === "allowed" ? "Soltar aqui" : "Não permitido"}</div>}
@@ -325,8 +391,10 @@ function CardBody({ o }: { o: Opportunity }) {
   let badge = null;
   if (o.stage === "won") {
     badge = o.is_converted ? (
-      <span className="pill pill-ok">
-        Pedido <span className="mono">{o.erp_order_number}</span>
+      <span className="card-erp">
+        <CheckCircleIcon />
+        Pedido criado no ERP
+        <span className="erp-tag mono">{o.erp_order_number}</span>
       </span>
     ) : (
       <span className="pill pill-accent">Pronto para converter</span>

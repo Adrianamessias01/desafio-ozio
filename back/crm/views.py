@@ -1,9 +1,11 @@
+from datetime import date
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from rest_framework import mixins, status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
@@ -15,6 +17,7 @@ from .serializers import (
     OpportunityDetailSerializer,
     OpportunitySerializer,
     StageMoveSerializer,
+    UserSummarySerializer,
 )
 from .stages import OPEN_STAGES, Stage
 
@@ -30,7 +33,9 @@ class OpportunityViewSet(
     """
     Oportunidades do pipeline.
 
-    Filtros: ?stage=estágio, ?customer=id do cliente, ?search=texto no título ou cliente.
+    Filtros da listagem: ?stage=estágio, ?customer=id do cliente, ?owner=id do vendedor,
+    ?search=texto no título ou cliente, ?close_from= e ?close_to= (AAAA-MM-DD) sobre a
+    previsão de fechamento.
     Exclusão serve para cadastros feitos por engano; negócio encerrado vai para Perdido.
     Oportunidade convertida em pedido não pode ser excluída.
     """
@@ -41,6 +46,8 @@ class OpportunityViewSet(
         queryset = Opportunity.objects.select_related("customer", "owner")
         if self.action == "retrieve":
             queryset = queryset.prefetch_related("stage_changes__changed_by")
+        if self.action != "list":
+            return queryset
 
         params = self.request.query_params
         if stage := params.get("stage"):
@@ -48,11 +55,19 @@ class OpportunityViewSet(
                 raise ValidationError({"stage": f"Estágio inválido: {stage}."})
             queryset = queryset.filter(stage=stage)
         if customer := params.get("customer"):
-            queryset = queryset.filter(customer_id=customer)
+            queryset = queryset.filter(customer_id=_positive_int(customer, "customer"))
+        if owner := params.get("owner"):
+            queryset = queryset.filter(owner_id=_positive_int(owner, "owner"))
         if search := params.get("search", "").strip():
             queryset = queryset.filter(
                 Q(title__icontains=search) | Q(customer__name__icontains=search)
             )
+        if close_from := params.get("close_from"):
+            queryset = queryset.filter(
+                expected_close_date__gte=_iso_date(close_from, "close_from")
+            )
+        if close_to := params.get("close_to"):
+            queryset = queryset.filter(expected_close_date__lte=_iso_date(close_to, "close_to"))
         return queryset
 
     def get_serializer_class(self):
@@ -139,6 +154,30 @@ class CustomerViewSet(
                 output_field=DecimalField(max_digits=16, decimal_places=2),
             ),
         ).order_by(ordering, "name")
+
+
+@api_view(["GET"])
+def sellers(request):
+    """Vendedores (usuários ativos que não são administradores), para filtros do pipeline."""
+    users = (
+        get_user_model()
+        .objects.filter(is_active=True, is_superuser=False)
+        .order_by("first_name", "username")
+    )
+    return Response(UserSummarySerializer(users, many=True).data)
+
+
+def _positive_int(value: str, field: str) -> int:
+    if not value.isdigit():
+        raise ValidationError({field: "Informe um identificador numérico."})
+    return int(value)
+
+
+def _iso_date(value: str, field: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise ValidationError({field: "Use o formato AAAA-MM-DD."}) from None
 
 
 def _reload(pk: int) -> Opportunity:

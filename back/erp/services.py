@@ -10,6 +10,7 @@ Contrato de qualquer implementação:
 - `create_order` é idempotente pela `idempotency_key`: repetir a chamada devolve
   o mesmo pedido, com `created=False`.
 - Indisponibilidade é sinalizada com `ErpUnavailable`.
+- `is_available` responde se o ERP está no ar, para a interface avisar o usuário.
 """
 
 from dataclasses import dataclass
@@ -59,9 +60,14 @@ class OrderReceipt:
 class ErpGateway(Protocol):
     def create_order(self, request: OrderRequest) -> OrderReceipt: ...
 
+    def is_available(self) -> bool: ...
+
 
 class LocalErpGateway:
     """ERP simulado, gravando no próprio banco da aplicação."""
+
+    def is_available(self) -> bool:
+        return not settings.ERP_SIMULATE_FAILURE
 
     def create_order(self, request: OrderRequest) -> OrderReceipt:
         if settings.ERP_SIMULATE_FAILURE:

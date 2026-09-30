@@ -468,6 +468,106 @@ th {
 .section-label {
   margin: 0 0 8px;
 }
+/* Filtros do pipeline, entre o título e o botão de nova oportunidade. */
+.filters {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.page-head > .filters + .btn-primary {
+  margin-left: 0;
+}
+.filter-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.filter-field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.filter-field .icon {
+  width: 16px;
+  height: 16px;
+}
+.filter-field select,
+.filter-field input {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13.5px;
+  padding: 0;
+  outline: none;
+}
+.filter-field select {
+  cursor: pointer;
+  padding-right: 4px;
+}
+.page-head .btn-primary {
+  height: 40px;
+}
+
+/* Faixa informativa da integração com o ERP, abaixo do kanban. */
+.erp-banner {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  color: var(--muted);
+  font-size: 13px;
+}
+.erp-banner > .icon {
+  color: var(--accent);
+  width: 18px;
+  height: 18px;
+}
+.erp-banner p {
+  margin: 0;
+  flex: 1;
+  min-width: 240px;
+}
+.erp-banner strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.erp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.erp-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.erp-status[data-state="ok"] .erp-dot {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+.erp-status[data-state="down"] .erp-dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}
+.erp-status[data-state="down"] {
+  color: var(--danger);
+}
+
 .search-note {
   display: flex;
   align-items: center;
@@ -488,24 +588,21 @@ th {
   gap: 12px;
   min-width: min-content;
 }
+/* Coluna inteira no tom da cor do estágio; os cards brancos se destacam sobre ela. */
 .col {
-  background: color-mix(in srgb, var(--c) 5%, var(--bg));
-  border: 1px solid color-mix(in srgb, var(--c) 18%, var(--line));
+  background: color-mix(in srgb, var(--c) 11%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--c) 22%, transparent);
   border-radius: 14px;
   display: flex;
   flex-direction: column;
-  min-height: 440px;
+  min-height: 460px;
   transition: border-color 0.12s, opacity 0.12s, background-color 0.12s;
 }
 .col-head {
-  padding: 12px 14px 10px;
+  padding: 14px 14px 6px;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 2px 8px;
-  background: color-mix(in srgb, var(--c) 15%, var(--surface));
-  border-bottom: 2px solid var(--c);
-  border-radius: 13px 13px 0 0;
+  gap: 8px;
 }
 .dot {
   width: 9px;
@@ -516,9 +613,9 @@ th {
 }
 .col-name {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 14px;
-  color: color-mix(in srgb, var(--c) 70%, var(--ink));
+  font-weight: 700;
+  font-size: 14.5px;
+  color: color-mix(in srgb, var(--c) 72%, var(--ink));
 }
 .col-count {
   margin-left: auto;
@@ -649,6 +746,26 @@ th {
 .card-customer {
   color: var(--muted);
   font-size: 12.5px;
+}
+.card-erp {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ok);
+}
+.card-erp .icon {
+  width: 15px;
+  height: 15px;
+}
+.erp-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .card-foot {
   display: flex;

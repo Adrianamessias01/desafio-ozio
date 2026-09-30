@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -51,6 +52,16 @@ class AuthenticationTests(ApiTestCase):
             response.data, {"id": self.user.pk, "username": "carla", "name": "Carla Souza"}
         )
 
+    def test_sellers_lists_active_non_admin_users(self):
+        User = get_user_model()
+        User.objects.create_user(username="marina", first_name="Marina", last_name="Freitas")
+        User.objects.create_superuser(username="admin", password="x")
+        User.objects.create_user(username="antigo", is_active=False)
+
+        response = self.client.get(reverse("sellers"))
+
+        self.assertEqual([u["name"] for u in response.data], ["Carla Souza", "Marina Freitas"])
+
     def test_health_check_is_public(self):
         self.client.force_authenticate(None)
 
@@ -103,6 +114,41 @@ class OpportunityCrudTests(ApiTestCase):
         response = self.client.get(reverse("opportunity-list"), {"stage": Stage.PROPOSAL})
 
         self.assertEqual([o["title"] for o in response.data], ["Proposta"])
+
+    def test_list_filters_by_owner(self):
+        other = get_user_model().objects.create_user(username="rafael")
+        self.make_opportunity(title="Da Carla")
+        self.make_opportunity(title="Do Rafael", owner=other)
+
+        response = self.client.get(reverse("opportunity-list"), {"owner": other.pk})
+
+        self.assertEqual([o["title"] for o in response.data], ["Do Rafael"])
+
+    def test_list_filters_by_expected_close_period(self):
+        self.make_opportunity(title="Setembro", expected_close_date=date(2026, 9, 10))
+        self.make_opportunity(title="Outubro", expected_close_date=date(2026, 10, 10))
+        self.make_opportunity(title="Sem data")
+
+        response = self.client.get(
+            reverse("opportunity-list"), {"close_from": "2026-10-01", "close_to": "2026-10-31"}
+        )
+
+        self.assertEqual([o["title"] for o in response.data], ["Outubro"])
+
+    def test_list_rejects_invalid_filters(self):
+        for params in ({"owner": "abc"}, {"close_from": "31/10/2026"}):
+            with self.subTest(params=params):
+                response = self.client.get(reverse("opportunity-list"), params)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_detail_ignores_list_filters(self):
+        opportunity = self.make_opportunity()
+
+        response = self.client.get(
+            reverse("opportunity-detail", args=[opportunity.pk]), {"stage": Stage.WON}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_list_rejects_unknown_stage_filter(self):
         response = self.client.get(reverse("opportunity-list"), {"stage": "xyz"})
