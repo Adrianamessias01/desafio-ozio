@@ -1,85 +1,149 @@
 # Mini Pipeline Comercial com Integração ERP
 
+[![CI](https://github.com/Adrianamessias01/desafio-ozio/actions/workflows/ci.yml/badge.svg)](https://github.com/Adrianamessias01/desafio-ozio/actions/workflows/ci.yml)
+
 Desafio técnico — **OZIO Tecnologia** · Desenvolvedor Full Stack Pleno
 
-Aplicação onde vendedores gerenciam oportunidades comerciais em um quadro kanban e
-convertem uma oportunidade ganha em um pedido no ERP.
+Vendedores gerenciam oportunidades comerciais num kanban e transformam uma oportunidade
+ganha em um pedido no ERP, que roda como um serviço separado e é chamado por HTTP.
 
-![Kanban do pipeline](docs/screenshots/kanban.png)
+![Demonstração: arrastar, regra de transição, conversão em pedido e ERP fora do ar](docs/demo.gif)
 
 | Arrastando: colunas permitidas destacadas | ERP fora do ar: erro tratado na tela |
 | --- | --- |
 | ![Arrastando um card](docs/screenshots/kanban-arrastando.png) | ![Erro do ERP](docs/screenshots/erro-erp.png) |
 | **Oportunidade convertida (tema escuro)** | **Pedido no ERP, com a oportunidade de origem** |
 | ![Convertida](docs/screenshots/convertida-tema-escuro.png) | ![Pedidos](docs/screenshots/pedidos.png) |
-| **Login por vendedor** | **Celular** |
-| ![Login](docs/screenshots/login.png) | ![Celular](docs/screenshots/celular.png) |
+| **Clientes** | **Documentação da API (Swagger)** |
+| ![Clientes](docs/screenshots/clientes.png) | ![Swagger](docs/screenshots/swagger.png) |
 
 ---
 
-## Estrutura do repositório
+## Como executar
 
-```
-.
-├── back/     API REST em Django + Django REST Framework + PostgreSQL
-├── front/    Aplicação React com React Router (SSR)
-└── docs/     Capturas de tela
+Pré-requisito: Docker com Docker Compose.
+
+```bash
+git clone https://github.com/Adrianamessias01/desafio-ozio.git
+cd desafio-ozio
+docker compose up --build
 ```
 
-Cada pasta tem seu próprio README com instruções de execução.
+| O quê | Endereço |
+| --- | --- |
+| **Aplicação** | http://localhost:3000 |
+| Documentação da API (Swagger) | http://localhost:8000/api/docs/ |
+| API do CRM | http://localhost:8000/api/ |
+| Serviço ERP | http://localhost:8001/erp-api/health/ (exige a chave `X-ERP-Key`) |
+
+**Contas de demonstração:** `carla`, `rafael` ou `marina`, todas com a senha `ozio1234`.
+Na subida, o compose aplica as migrations e roda o `seed`, que cria vendedores, clientes e
+oportunidades de exemplo (uma delas já convertida em pedido).
+
+### Roteiro para avaliar
+
+1. **Login:** entre como `carla` / `ozio1234`. O menu no avatar tem a opção **Sair**.
+2. **Arrastar e soltar:** leve "Renovação de licenças 2027" de Lead para Qualificação. O card
+   muda na hora (atualização otimista) e a mudança fica no histórico da oportunidade.
+3. **Regra de transição:** tente levar um card de Proposta direto para Ganho. A coluna aparece
+   como "Não permitido" e um aviso explica o motivo. Em Perdido, um modal pede o motivo.
+4. **Conversão:** mova "Migração de ERP legado" para Ganho, abra o card e use
+   **Converter em pedido**. O pedido aparece em **Pedidos**; "Converter novamente" devolve o
+   mesmo número. No pedido, o cartão **Origem** leva de volta à oportunidade.
+5. **ERP fora do ar de verdade:** pare o serviço do ERP e tente converter outra oportunidade
+   ganha. A faixa do kanban fica vermelha, a tela mostra o erro, nada é gravado e o botão
+   vira "Tentar novamente". Religue o ERP e a mesma conversão funciona.
+
+   ```bash
+   docker compose stop erp     # derruba o ERP
+   docker compose start erp    # volta ao normal
+   ```
+
+6. **Clientes:** filtre por nome ou CNPJ e use **Ver no pipeline** para abrir o kanban só
+   com as oportunidades daquele cliente. Novos clientes podem ser cadastrados na tela
+   Clientes ou direto do formulário de oportunidade.
 
 ---
 
-## Stack
+## Arquitetura
 
-| Camada    | Tecnologia                                  |
-| --------- | ------------------------------------------- |
-| Back-end  | Python, Django, Django REST Framework       |
-| Banco     | PostgreSQL                                  |
-| Front-end | React, React Router (server-side rendering) |
-| Kanban    | dnd-kit (mouse, toque e teclado)            |
-| API       | RESTful                                     |
-| Ambiente  | Docker Compose (banco, API e front)         |
+```mermaid
+flowchart LR
+    B([Navegador]) -- "HTML + formulários<br/>(cookie httpOnly)" --> W["web<br/>React Router SSR<br/>:3000"]
+    W -- "REST + Token" --> A["api — CRM<br/>Django + DRF<br/>:8000"]
+    A -- "HTTP + X-ERP-Key<br/>timeout e novas tentativas" --> E["erp — ERP<br/>serviço separado<br/>:8001"]
+    A --- DB[(PostgreSQL)]
+    E --- DB
+```
+
+- **web:** só o servidor do React Router conversa com a API. O token do vendedor fica num
+  cookie `httpOnly` assinado; o JavaScript do navegador nunca o vê.
+- **api (CRM):** pipeline, clientes, regras de estágio e conversão. Fala com o ERP apenas pela
+  interface `ErpGateway` (`back/erp/services.py`).
+- **erp:** serviço à parte, com API própria (`POST /erp-api/orders/`). Não conhece os modelos
+  do CRM: recebe uma cópia dos dados do cliente e uma chave de idempotência. Pode simular
+  latência e falha (`ERP_SIMULATE_LATENCY_MS`, `ERP_SIMULATE_FAILURE`).
+- CRM e ERP compartilham o servidor PostgreSQL por simplicidade, mas em tabelas próprias e
+  **sem chave estrangeira** entre os contextos. O ERP poderia ir para outro banco sem mudar
+  o CRM.
+
+| Pasta | Conteúdo |
+| --- | --- |
+| [`back/`](back/README.md) | Django + DRF: apps `crm`, `erp` e `core` |
+| [`front/`](front/README.md) | React Router (SSR), kanban com dnd-kit |
+| `e2e/` | Testes de navegador com Playwright |
+| `docs/` | Capturas de tela e demonstração |
 
 ---
 
 ## Domínio
 
-O sistema é dividido em dois contextos independentes dentro do back-end:
+### CRM: pipeline comercial
 
-### CRM — pipeline comercial
+| Entidade      | Descrição                                                    |
+| ------------- | ------------------------------------------------------------ |
+| `Customer`    | Cliente / empresa associada à oportunidade                   |
+| `Opportunity` | Título, cliente, valor, estágio, vendedor, previsão, motivo da perda |
+| `OpportunityStageChange` | Auditoria de cada mudança de estágio (de, para, quem, quando) |
 
-| Entidade      | Descrição                                                      |
-| ------------- | -------------------------------------------------------------- |
-| `Customer`    | Cliente / empresa associada à oportunidade                      |
-| `Opportunity` | Oportunidade comercial: título, cliente, valor, estágio, dono   |
-
-Estágios do pipeline:
-
+```mermaid
+stateDiagram-v2
+    direction LR
+    state "Lead" as lead
+    state "Qualificação" as qualification
+    state "Proposta" as proposal
+    state "Negociação" as negotiation
+    state "Ganho" as won
+    state "Perdido" as lost
+    [*] --> lead
+    lead --> qualification
+    qualification --> proposal
+    proposal --> negotiation
+    negotiation --> won
+    won --> negotiation: enquanto não convertida
+    lead --> lost
+    qualification --> lost
+    proposal --> lost
+    negotiation --> lost
+    lost --> lead: reabrir
+    won --> [*]: convertida (congelada)
 ```
-Lead → Qualificação → Proposta → Negociação → Ganho
-                                            └→ Perdido
-```
 
-Regras de transição (código em `back/crm/stages.py`):
+- Os estágios abertos (Lead, Qualificação, Proposta, Negociação) vão e voltam entre si.
+- **Ganho só a partir de Negociação.** Qualquer estágio aberto pode ir para Perdido, com motivo
+  obrigatório; Perdido só reabre como Lead.
+- Depois da conversão em pedido, a oportunidade fica **congelada**: não muda de estágio, não
+  é editada nem excluída.
 
-- Os estágios abertos (Lead, Qualificação, Proposta e Negociação) podem ir e voltar entre si.
-- Ganho só é alcançado a partir de Negociação.
-- Qualquer estágio aberto pode ir para Perdido, e uma oportunidade Perdida pode ser
-  reaberta como Lead.
-- Uma oportunidade Ganha pode voltar para Negociação enquanto não for convertida. Depois
-  da conversão, ela fica congelada.
+Regras em `back/crm/stages.py` e `back/crm/services.py`. O front espelha a tabela de
+transições (`front/app/lib/stages.ts`) só para orientar o arrastar; quem decide é a API.
 
-### ERP — pedidos
+### ERP: pedidos
 
-| Entidade    | Descrição                                          |
-| ----------- | -------------------------------------------------- |
-| `Order`     | Pedido gerado a partir de uma oportunidade ganha    |
-| `OrderItem` | Itens do pedido                                     |
-
-O ERP é tratado como um serviço à parte: o CRM se comunica com ele por uma interface
-explícita, de forma que a origem dos pedidos possa ser trocada por um ERP real sem
-alterar as regras do pipeline.
+| Entidade    | Descrição                                               |
+| ----------- | ------------------------------------------------------- |
+| `Order`     | Número (`PED-000001`), cópia dos dados do cliente, total, situação e `idempotency_key` única |
+| `OrderItem` | Itens do pedido                                          |
 
 ---
 
@@ -87,204 +151,138 @@ alterar as regras do pipeline.
 
 `POST /api/opportunities/{id}/convert/`
 
-A conversão é o ponto crítico da aplicação e respeita as seguintes garantias:
-
-- **Pré-condição** — somente oportunidades no estágio `Ganho` podem ser convertidas.
-- **Idempotência** — converter a mesma oportunidade duas vezes não cria dois pedidos;
-  a segunda chamada devolve o pedido já existente.
-- **Atomicidade** — a criação do pedido e a marcação da oportunidade acontecem na mesma
-  transação; qualquer falha no ERP desfaz a operação inteira.
-- **Erro visível** — indisponibilidade do ERP retorna um erro tratado, exibido ao
-  usuário no front-end.
-
-Como cada garantia é implementada (`back/crm/services.py`, função `convert_opportunity`):
-
-| Garantia       | Implementação                                                                 |
-| -------------- | ----------------------------------------------------------------------------- |
-| Pré-condição   | Fora de `Ganho` responde `409` com o código `opportunity_not_won`              |
-| Idempotência   | Oportunidade já convertida devolve o pedido existente sem chamar o ERP (`200`); a chave `crm-opportunity:<id>` enviada ao ERP é única no banco, então nem uma repetição que chegue ao ERP cria outro pedido |
-| Concorrência   | `select_for_update` na oportunidade: duas conversões simultâneas geram um único pedido |
-| Atomicidade    | Pedido e marcação da oportunidade na mesma `transaction.atomic`               |
-| Erro do ERP    | `503` com o código `erp_unavailable`; nada é gravado e a oportunidade continua em `Ganho`, pronta para nova tentativa |
-
-Resposta de sucesso (`201` na primeira conversão, `200` nas seguintes):
-
-```json
-{ "order_number": "PED-000002", "created": true, "opportunity": { "...": "..." } }
+```mermaid
+sequenceDiagram
+    participant F as Front (SSR)
+    participant C as CRM (api)
+    participant DB as Banco do CRM
+    participant E as ERP (serviço)
+    F->>C: POST /opportunities/42/convert/
+    C->>DB: trava a oportunidade (select_for_update)
+    alt já convertida
+        C-->>F: 200 · mesmo pedido, sem chamar o ERP
+    else fora de Ganho
+        C-->>F: 409 opportunity_not_won
+    else em Ganho
+        C->>E: POST /erp-api/orders/ (chave crm-opportunity:42)
+        alt ERP responde
+            E-->>C: 201 pedido criado (ou 200 se a chave já existia)
+            C->>DB: grava número do pedido e data (commit)
+            C-->>F: 201 · número do pedido
+        else rede, timeout ou 5xx
+            C->>E: novas tentativas com a mesma chave
+            C-->>F: 503 erp_unavailable · nada gravado no CRM
+        end
+    end
 ```
 
-Depois de convertida, a oportunidade fica congelada: não muda de estágio nem é editada
-(`409`, código `opportunity_frozen`).
+| Garantia | Como é garantida |
+| --- | --- |
+| **Pré-condição** | Fora de `Ganho` responde `409` (`opportunity_not_won`). |
+| **Idempotência** | Oportunidade já convertida devolve o pedido existente sem chamar o ERP. A chave `crm-opportunity:<id>` é única no ERP: qualquer repetição que chegue até ele devolve o mesmo pedido. |
+| **Concorrência** | `select_for_update` na oportunidade: duas conversões simultâneas geram um único pedido (testado com duas threads). |
+| **Atomicidade** | No CRM, a marcação da oportunidade só é gravada, na mesma transação da trava, depois que o ERP confirma o pedido. Se o ERP falha, nada muda no CRM. Se o ERP criou o pedido mas a resposta se perdeu, a próxima tentativa recebe o mesmo pedido pela chave e o vincula, sem duplicar. No ERP, pedido e itens são gravados juntos. |
+| **Erro visível** | ERP fora do ar, lento ou com erro 5xx: novas tentativas com espera crescente; esgotadas, `503` (`erp_unavailable`) com mensagem clara e botão "Tentar novamente" na tela. Recusa do ERP (4xx) vira `502` (`erp_rejected`), sem repetir. |
 
 ---
 
 ## API
 
-| Método  | Rota                                | Descrição                          |
-| ------- | ----------------------------------- | ---------------------------------- |
-| `GET`   | `/api/opportunities/`               | Lista oportunidades do pipeline    |
-| `POST`  | `/api/opportunities/`               | Cria uma oportunidade              |
-| `GET`   | `/api/opportunities/{id}/`          | Detalha uma oportunidade           |
-| `PATCH` | `/api/opportunities/{id}/`          | Atualiza uma oportunidade          |
-| `DELETE`| `/api/opportunities/{id}/`          | Exclui (bloqueado se já convertida) |
-| `PATCH` | `/api/opportunities/{id}/stage/`    | Move a oportunidade de estágio     |
-| `POST`  | `/api/opportunities/{id}/convert/`  | Converte em pedido no ERP          |
-| `GET`   | `/api/customers/`                   | Lista clientes com totais do pipeline |
-| `POST`  | `/api/customers/`                   | Cadastra cliente (CPF/CNPJ com ou sem pontuação) |
-| `GET`   | `/api/customers/{id}/`              | Detalha um cliente                 |
-| `GET`   | `/api/orders/`                      | Lista pedidos gerados              |
-| `GET`   | `/api/orders/{id}/`                 | Detalha um pedido com seus itens   |
-| `GET`   | `/api/sellers/`                     | Vendedores, para o filtro do kanban |
-| `GET`   | `/api/erp/status/`                  | Se o ERP está disponível           |
-| `POST`  | `/api/auth/login/`                  | Troca usuário e senha por um token (pública) |
-| `POST`  | `/api/auth/logout/`                 | Revoga o token                     |
-| `GET`   | `/api/me/`                          | Usuário dono do token              |
-| `GET`   | `/api/health/`                      | Verificação de saúde (pública)     |
+A documentação completa e interativa está no **Swagger: http://localhost:8000/api/docs/**
+(faça login em `POST /api/auth/login/` e use o token em **Authorize** como `Token <token>`).
 
-Todas as rotas, exceto login e `/api/health/`, exigem o header `Authorization: Token <token>`.
-Filtros da listagem de oportunidades: `?stage=`, `?customer=`, `?owner=`, `?search=` e
-`?close_from=`/`?close_to=` (AAAA-MM-DD, sobre a previsão de fechamento). A listagem de
-clientes aceita `?ordering=` com `name`, `document`, `open_count`, `won_count` ou
-`open_amount`, e a de pedidos com `number`, `customer_name`, `status`, `created_at` ou
-`total` (prefixo `-` para decrescente).
+| Método | Rota | Descrição |
+| --- | --- | --- |
+| `POST` | `/api/auth/login/` | Troca usuário e senha por um token (limite de 10 tentativas/min por IP) |
+| `POST` | `/api/auth/logout/` | Revoga o token |
+| `GET` `POST` | `/api/opportunities/` | Lista (filtros `stage`, `customer`, `owner`, `search`, `close_from`, `close_to`) e cria |
+| `GET` `PATCH` `DELETE` | `/api/opportunities/{id}/` | Detalha, edita e exclui (bloqueado se convertida) |
+| `PATCH` | `/api/opportunities/{id}/stage/` | Move de estágio, com as regras de transição |
+| `POST` | `/api/opportunities/{id}/convert/` | Converte em pedido no ERP |
+| `GET` `POST` | `/api/customers/` | Lista com totais do pipeline (`ordering`) e cadastra |
+| `GET` | `/api/orders/`, `/api/orders/{id}/` | Pedidos com itens (`ordering`) |
+| `GET` | `/api/sellers/`, `/api/erp/status/`, `/api/me/`, `/api/health/` | Vendedores, status do ERP, usuário logado e saúde |
 
-Erros de regra de negócio seguem o formato do DRF, com um código estável para o front:
+Erros de regra de negócio têm um código estável, para o front decidir o que mostrar sem
+depender do texto:
 
 ```json
 { "detail": "Só é possível marcar como Ganho a partir de Negociação.", "code": "invalid_stage_transition" }
 ```
 
-| Código                     | HTTP | Quando                                             |
-| -------------------------- | ---- | -------------------------------------------------- |
-| `invalid_stage_transition` | 409  | Movimentação fora das regras do pipeline           |
-| `opportunity_frozen`       | 409  | Oportunidade já convertida sendo alterada ou excluída |
-| `lost_reason_required`     | 400  | Ida para Perdido sem motivo                        |
-| `opportunity_not_won`      | 409  | Conversão de oportunidade fora de Ganho            |
-| `erp_unavailable`          | 503  | ERP fora do ar durante a conversão                 |
-| `invalid_credentials`      | 400  | Login com usuário ou senha incorretos              |
-
-### Autenticação
-
-Cada vendedor entra com a própria conta. O servidor do front-end (SSR) chama
-`/api/auth/login/`, recebe o token e o guarda num cookie `httpOnly` assinado: o JavaScript
-do navegador não lê o token e só o servidor do React Router o envia para a API. As
-oportunidades novas ficam no nome de quem está logado.
-
-"Sair" revoga o token na API e apaga o cookie. Se a API recusar o token (revogado ou
-inexistente), o usuário volta para o login com o aviso de sessão encerrada.
+| Código | HTTP | Quando |
+| --- | --- | --- |
+| `invalid_stage_transition` | 409 | Movimentação fora das regras do pipeline |
+| `opportunity_frozen` | 409 | Oportunidade já convertida sendo alterada ou excluída |
+| `lost_reason_required` | 400 | Ida para Perdido sem motivo |
+| `opportunity_not_won` | 409 | Conversão de oportunidade fora de Ganho |
+| `erp_unavailable` | 503 | ERP fora do ar, lento ou com erro interno |
+| `erp_rejected` | 502 | ERP recusou o pedido |
+| `invalid_credentials` | 400 | Login com usuário ou senha incorretos |
 
 ---
 
-## Como executar
+## Testes e qualidade
 
-Pré-requisitos: Docker e Docker Compose, ou Python 3.12+ e Node 20+ com PostgreSQL local.
+Tudo roda no [CI](.github/workflows/ci.yml) a cada push.
 
-```bash
-git clone <url-deste-repositorio>
-cd desafio-ozio
-docker compose up --build
-```
+| Onde | O que cobre | Comando |
+| --- | --- | --- |
+| Back-end (101 testes) | Transições, congelamento, conversão (pré-condição, idempotência, rollback, **duas conversões simultâneas**), API do ERP, cliente HTTP (tentativas, timeout, 4xx/5xx) e **ida e volta HTTP real** entre CRM e ERP, login e limite de tentativas | `docker compose exec api python manage.py test` |
+| Front-end (15 testes) | Regras de transição espelhadas, atraso, formatação pt-BR, origem do pedido | `docker compose exec web npm test` |
+| Navegador (9 testes) | Login e Sair; arrastar permitido, bloqueado e para Perdido; conversão idempotente com o pedido apontando a origem; clientes | `docker compose --profile e2e run --rm e2e` |
+| Estático | Lint (ruff), tipos (tsc), migrations em dia, esquema OpenAPI válido | ver o CI |
 
-A aplicação abre em **`http://localhost:3000`**. A API sobe em `http://localhost:8000/api/`
-(verificação: `GET /api/health/`) e o admin em `http://localhost:8000/admin/`. Na subida, o
-compose aplica as migrations e roda o `seed`, que cria vendedores, clientes e oportunidades
-de exemplo.
-
-**Contas de demonstração:** `carla`, `rafael` ou `marina`, todas com a senha `ozio1234`.
-
-Para chamar a API direto, obtenha um token e use no header:
-
-```bash
-curl -X POST http://localhost:8000/api/auth/login/ \
-  -H "Content-Type: application/json" -d '{"username": "carla", "password": "ozio1234"}'
-
-curl -H "Authorization: Token <token>" http://localhost:8000/api/opportunities/
-```
-
-Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.md`](front/README.md).
-
-### Roteiro para avaliar
-
-0. **Login:** entre como `carla` / `ozio1234`. O menu no avatar (canto superior direito)
-   tem a opção **Sair**.
-1. **Arrastar e soltar:** leve "Renovação de licenças 2027" de Lead para Qualificação. O card
-   muda na hora (atualização otimista) e a mudança fica registrada no histórico.
-2. **Regra de transição:** tente levar um card de Proposta direto para Ganho. A coluna aparece
-   como "Não permitido" e um aviso explica o motivo.
-3. **Perdido:** solte um card em Perdido. Um modal pede o motivo da perda.
-4. **Cadastro e exclusão:** use "+ Nova oportunidade". Ela entra como Lead. Se o cliente não
-   existir, "Cadastrar novo cliente" abre o cadastro e volta com ele já selecionado (também
-   dá para cadastrar pela tela Clientes). Para apagar um
-   cadastro feito por engano, abra o card e use "Excluir oportunidade" (há confirmação).
-   Oportunidades já convertidas em pedido não podem ser excluídas.
-5. **Conversão:** mova "Migração de ERP legado" de Negociação para Ganho, clique no card e use
-   "Converter em pedido". O pedido aparece em **Pedidos**, e "Converter novamente" devolve
-   o mesmo número, sem duplicar. Clicando no pedido, a gaveta mostra os itens e a
-   oportunidade de origem, com link de volta para ela.
-6. **ERP fora do ar:** suba a API com a falha simulada e tente converter outra oportunidade
-   ganha. A tela mostra o erro, nada é gravado e o botão vira "Tentar novamente".
-
-   ```bash
-   ERP_SIMULATE_FAILURE=True docker compose up -d api                   # bash
-   $env:ERP_SIMULATE_FAILURE="True"; docker compose up -d api           # PowerShell
-   ```
-
-   Para voltar ao normal, repita o comando com `False`.
+O teste de navegador de conversão cria um pedido de verdade; rode-o num banco de teste
+(no CI o banco é criado do zero).
 
 ---
 
 ## Decisões técnicas
 
-- **CRM e ERP sem chave estrangeira entre si.** O CRM guarda só o número do pedido, e o ERP
-  guarda uma cópia dos dados do cliente. A única porta entre eles é `erp/services.py`
-  (`ErpGateway`), então o ERP simulado pode virar um cliente HTTP de um ERP real sem mexer
-  nas regras do pipeline.
-- **Regras na camada de serviço.** Views só validam formato; `crm/services.py` aplica as regras
-  e trava a linha da oportunidade (`select_for_update`) em toda alteração.
-- **Idempotência em duas camadas.** A oportunidade convertida responde sem chamar o ERP, e a
-  `idempotency_key` única no banco do ERP protege contra repetições que cheguem até ele.
-- **Erros com código estável** (`{"detail", "code"}`), para o front decidir o que mostrar sem
-  depender do texto da mensagem.
-- **SSR com o token só no servidor.** O navegador fala apenas com o servidor do React Router,
-  que guarda o token do usuário em cookie `httpOnly` e chama a API. Assim o token não vaza e
-  a primeira resposta já chega com o kanban pronto.
+- **ERP como serviço separado, por HTTP.** O CRM só conhece o contrato `ErpGateway`. Em
+  produção a implementação é o cliente HTTP (`HttpErpGateway`); nos testes do CRM, a lógica
+  local, rápida e isolada. Trocar por um ERP real é escrever outra implementação do contrato.
+- **Idempotência como base da resiliência.** Como o pedido é identificado pela chave da
+  oportunidade, repetir a chamada é sempre seguro. Isso permite novas tentativas automáticas
+  e resolve o caso em que o ERP criou o pedido mas a resposta não chegou.
+- **Regras na camada de serviço** (`crm/services.py`). Views só validam formato; toda
+  alteração trava a linha da oportunidade.
+- **SSR com o token só no servidor**, em cookie `httpOnly`. A primeira resposta já chega com
+  o kanban montado, e o token não vaza para o navegador.
 - **Atualização otimista derivada do estado do fetcher**, sem cópia local dos dados: se a API
   recusar a movimentação, o card volta sozinho para a coluna de origem.
-- **Exclusão só para engano.** Negócio encerrado vai para Perdido e mantém o histórico;
-  excluir apaga a oportunidade e é bloqueado depois da conversão, porque o pedido no ERP
-  referencia o número dela.
-- **Regras de transição espelhadas no front** (`front/app/lib/stages.ts`) só para orientar o
-  arrastar; quem decide é sempre o back-end.
+- **Filtros e ordenação na URL** (`?owner=`, `?customer=`, `?sort=`…): recarregar ou
+  compartilhar o link mantém a visão.
+- **Exclusão só para cadastro feito por engano.** Negócio encerrado vai para Perdido e mantém
+  o histórico; depois da conversão, excluir é bloqueado.
+
+## O que eu faria com mais tempo
+
+- **Conversão assíncrona com outbox:** gravar a intenção de pedido na transação do CRM e
+  enviar ao ERP por uma fila com reprocessamento, em vez de esperar o ERP dentro da
+  requisição.
+- **Itens na conversão:** hoje o pedido sai com um item (a própria oportunidade); o ideal é
+  escolher produtos, quantidades e descontos.
+- **Permissões por papel:** vendedor vê e edita só as próprias oportunidades; gestor vê tudo.
+- **Paginação e busca no servidor** para listas grandes, e atualização em tempo real do kanban
+  entre usuários (WebSocket ou SSE).
+- **Observabilidade:** logs estruturados com id de requisição de ponta a ponta (front → CRM →
+  ERP) e métricas de latência e falha do ERP.
+- **Deploy** com o estágio de produção dos Dockerfiles (gunicorn e `react-router-serve`) e
+  banco gerenciado.
 
 ---
 
-## Testes
+## Stack
 
-```bash
-docker compose exec api python manage.py test    # 86 testes do back-end
-docker compose exec api ruff check .             # lint
-docker compose exec web npm run typecheck        # tipos do front-end
-```
-
-Os testes do back-end cobrem transições de estágio, bloqueio da conversão fora de Ganho,
-idempotência, rollback quando o ERP falha e duas conversões simultâneas da mesma oportunidade.
-O front-end foi validado em navegador (Chromium) nos fluxos do roteiro acima, em desktop,
-celular e tema escuro.
-
----
-
-## Andamento
-
-- [x] Estrutura do repositório e ambiente
-- [x] Modelagem e migrations
-- [x] API REST do CRM
-- [x] Módulo ERP e criação de pedidos
-- [x] Regra de conversão com idempotência
-- [x] Front-end com SSR
-- [x] Kanban com drag and drop
-- [x] Conversão pela interface
-- [x] Testes
-- [x] Ajustes visuais e documentação final
+| Camada | Tecnologia |
+| --- | --- |
+| Back-end | Python 3.12, Django 5.2, Django REST Framework, drf-spectacular |
+| Banco | PostgreSQL 16 |
+| Front-end | React 19, React Router 8 (SSR), TypeScript, dnd-kit |
+| Testes | Django TestCase, Vitest, Playwright |
+| Ambiente | Docker Compose e GitHub Actions |
 
 ---
 

@@ -75,8 +75,12 @@ O `Dockerfile` também tem um estágio `production` com o build pronto.
 ## Verificações
 
 ```bash
-npm run typecheck
+npm run typecheck     # tipos
+npm test              # testes unitários (Vitest): regras de estágio, formatação, pedidos
 ```
+
+Os testes de navegador (Playwright) ficam em `../e2e` e rodam contra a aplicação no ar:
+`docker compose --profile e2e run --rm e2e`.
 
 ## Variáveis de ambiente
 
