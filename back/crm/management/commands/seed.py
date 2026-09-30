@@ -109,11 +109,12 @@ class Command(BaseCommand):
         User = get_user_model()
         users = {}
         for username, first_name, last_name in SELLERS:
-            user, _ = User.objects.get_or_create(
+            user, created = User.objects.get_or_create(
                 username=username, defaults={"first_name": first_name, "last_name": last_name}
             )
-            # Só define a senha se ainda não houver uma: não sobrescreve senhas trocadas.
-            if not user.has_usable_password():
+            # Define a senha só para quem ainda não tem uma (usuário novo, senha vazia ou
+            # desativada): não sobrescreve senhas trocadas depois.
+            if created or not user.password or not user.has_usable_password():
                 user.set_password(settings.SEED_PASSWORD)
                 user.save(update_fields=["password"])
             users[username] = user
