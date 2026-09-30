@@ -268,6 +268,41 @@ class CustomerApiTests(ApiTestCase):
         self.assertEqual(totals["ACME Ltda"], (2, 1, "350.00"))
         self.assertEqual(totals["Sem oportunidades"], (0, 0, "0.00"))
 
+    def create(self, **data):
+        payload = {"name": "Nova Empresa", "document": "11.222.333/0001-81", **data}
+        return self.client.post(reverse("customer-list"), payload, format="json")
+
+    def test_create_stores_document_digits_only(self):
+        response = self.create(email="contato@nova.com.br")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data["document"], "11222333000181")
+        self.assertTrue(Customer.objects.filter(document="11222333000181").exists())
+
+    def test_create_accepts_cpf(self):
+        response = self.create(document="123.456.789-09")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["document"], "12345678909")
+
+    def test_create_rejects_duplicate_document(self):
+        response = self.create(document="12.345.678/0001-99")  # mesmo do cliente ACME
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["document"], ["Já existe um cliente com este CPF/CNPJ."])
+
+    def test_create_rejects_wrong_length(self):
+        response = self.create(document="123")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("document", response.data)
+
+    def test_create_requires_name(self):
+        response = self.create(name="")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("name", response.data)
+
     def test_list_is_sorted_by_name(self):
         Customer.objects.create(name="Zeta", document="98765432000110")
         Customer.objects.create(name="Beta", document="98765432000121")

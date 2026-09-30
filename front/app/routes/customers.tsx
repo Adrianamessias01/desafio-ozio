@@ -1,3 +1,5 @@
+import { Link, Outlet } from "react-router";
+
 import { PageError } from "~/components/page-error";
 import { api, loadOrThrow } from "~/lib/api.server";
 import { money, taxId } from "~/lib/format";
@@ -26,6 +28,9 @@ export default function Customers({ loaderData }: Route.ComponentProps) {
           <h1>Clientes</h1>
           <p className="sub">Empresas atendidas e o que cada uma tem no pipeline.</p>
         </div>
+        <Link to="/customers/new" preventScrollReset className="btn btn-primary">
+          + Novo cliente
+        </Link>
       </div>
 
       <div className="table-wrap">
@@ -58,6 +63,7 @@ export default function Customers({ loaderData }: Route.ComponentProps) {
           </table>
         )}
       </div>
+      <Outlet />
     </>
   );
 }

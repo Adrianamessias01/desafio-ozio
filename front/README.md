@@ -90,6 +90,7 @@ npm run typecheck
 | `/opportunities/new` | Cadastro de oportunidade (gaveta sobre o kanban)   |
 | `/opportunities/:id` | Detalhe, mudança de estágio, conversão e exclusão  |
 | `/customers`         | Clientes com os totais do pipeline                 |
+| `/customers/new`     | Cadastro de cliente (gaveta). Com `?next=opportunity`, volta ao cadastro de oportunidade com o cliente selecionado |
 | `/orders`            | Pedidos gerados no ERP                             |
 
 ## Conversão em pedido

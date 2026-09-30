@@ -2,6 +2,7 @@ import { data } from "react-router";
 
 import type {
   ConversionResult,
+  Customer,
   CustomerSummary,
   Opportunity,
   OpportunityDetail,
@@ -121,6 +122,9 @@ export const api = {
     request<ConversionResult>(`/opportunities/${id}/convert/`, { method: "POST" }),
 
   listCustomers: () => request<CustomerSummary[]>("/customers/"),
+
+  createCustomer: (body: { name: string; document: string; email: string; phone: string }) =>
+    request<Customer>("/customers/", { method: "POST", body }),
 
   listOrders: () => request<Order[]>("/orders/"),
 };

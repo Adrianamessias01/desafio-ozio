@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -19,9 +20,23 @@ class UserSummarySerializer(serializers.ModelSerializer):
 
 
 class CustomerSerializer(serializers.ModelSerializer):
+    # Aceita o documento com pontuação ("12.345.678/0001-90") e grava só os dígitos.
+    document = serializers.CharField(max_length=18)
+
     class Meta:
         model = Customer
         fields = ["id", "name", "document", "email", "phone"]
+
+    def validate_document(self, value: str) -> str:
+        digits = re.sub(r"\D", "", value)
+        if len(digits) not in (11, 14):
+            raise serializers.ValidationError("Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).")
+        duplicates = Customer.objects.filter(document=digits)
+        if self.instance:
+            duplicates = duplicates.exclude(pk=self.instance.pk)
+        if duplicates.exists():
+            raise serializers.ValidationError("Já existe um cliente com este CPF/CNPJ.")
+        return digits
 
 
 class CustomerListSerializer(CustomerSerializer):

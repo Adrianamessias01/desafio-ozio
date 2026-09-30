@@ -11,6 +11,7 @@ from . import services
 from .models import Customer, Opportunity
 from .serializers import (
     CustomerListSerializer,
+    CustomerSerializer,
     OpportunityDetailSerializer,
     OpportunitySerializer,
     StageMoveSerializer,
@@ -101,8 +102,18 @@ class OpportunityViewSet(
         )
 
 
-class CustomerViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = CustomerListSerializer
+class CustomerViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Clientes. A listagem traz os totais do pipeline; o cadastro aceita CPF/CNPJ formatado."""
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return CustomerSerializer
+        return CustomerListSerializer
 
     def get_queryset(self):
         open_filter = Q(opportunities__stage__in=OPEN_STAGES)

@@ -1,6 +1,7 @@
-import { Form, redirect, useNavigation } from "react-router";
+import { Form, Link, redirect, useNavigation } from "react-router";
 
 import { Drawer } from "~/components/drawer";
+import { Field } from "~/components/field";
 import { actionError, api, loadOrThrow } from "~/lib/api.server";
 import { parseAmount } from "~/lib/format";
 import type { Route } from "./+types/opportunity-new";
@@ -9,9 +10,11 @@ export function meta() {
   return [{ title: "Nova oportunidade · Pipeline Comercial" }];
 }
 
-export async function loader() {
+export async function loader({ request }: Route.LoaderArgs) {
   const customers = await loadOrThrow(() => api.listCustomers());
-  return { customers };
+  // ?customer=<id> vem do cadastro de cliente feito a partir deste formulário.
+  const selectedCustomer = new URL(request.url).searchParams.get("customer") ?? "";
+  return { customers, selectedCustomer };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -69,12 +72,23 @@ export default function NewOpportunity({ loaderData, actionData }: Route.Compone
             aria-invalid={fields.title ? true : undefined}
           />
         </Field>
-        <Field label="Cliente" name="customer_id" error={fields.customer_id}>
+        <Field
+          label="Cliente"
+          name="customer_id"
+          error={fields.customer_id}
+          hint={
+            <span className="sub">
+              Não está na lista?{" "}
+              <Link to="/customers/new?next=opportunity">Cadastrar novo cliente</Link>
+            </span>
+          }
+        >
           <select
+            key={loaderData.selectedCustomer}
             id="customer_id"
             name="customer_id"
             required
-            defaultValue={values.customer_id ?? ""}
+            defaultValue={values.customer_id ?? loaderData.selectedCustomer}
             aria-invalid={fields.customer_id ? true : undefined}
           >
             <option value="" disabled>
@@ -109,25 +123,5 @@ export default function NewOpportunity({ loaderData, actionData }: Route.Compone
         <p className="sub">A oportunidade entra no pipeline como Lead, com você como responsável.</p>
       </Form>
     </Drawer>
-  );
-}
-
-function Field({
-  label,
-  name,
-  error,
-  children,
-}: {
-  label: string;
-  name: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="field">
-      <label htmlFor={name}>{label}</label>
-      {children}
-      {error && <span className="field-error">{error}</span>}
-    </div>
   );
 }

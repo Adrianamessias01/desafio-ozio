@@ -128,6 +128,7 @@ Depois de convertida, a oportunidade fica congelada: não muda de estágio nem �
 | `PATCH` | `/api/opportunities/{id}/stage/`    | Move a oportunidade de estágio     |
 | `POST`  | `/api/opportunities/{id}/convert/`  | Converte em pedido no ERP          |
 | `GET`   | `/api/customers/`                   | Lista clientes com totais do pipeline |
+| `POST`  | `/api/customers/`                   | Cadastra cliente (CPF/CNPJ com ou sem pontuação) |
 | `GET`   | `/api/customers/{id}/`              | Detalha um cliente                 |
 | `GET`   | `/api/orders/`                      | Lista pedidos gerados              |
 | `GET`   | `/api/orders/{id}/`                 | Detalha um pedido com seus itens   |
@@ -189,7 +190,9 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 2. **Regra de transição:** tente levar um card de Proposta direto para Ganho. A coluna aparece
    como "Não permitido" e um aviso explica o motivo.
 3. **Perdido:** solte um card em Perdido. Um modal pede o motivo da perda.
-4. **Cadastro e exclusão:** use "+ Nova oportunidade". Ela entra como Lead. Para apagar um
+4. **Cadastro e exclusão:** use "+ Nova oportunidade". Ela entra como Lead. Se o cliente não
+   existir, "Cadastrar novo cliente" abre o cadastro e volta com ele já selecionado (também
+   dá para cadastrar pela tela Clientes). Para apagar um
    cadastro feito por engano, abra o card e use "Excluir oportunidade" (há confirmação).
    Oportunidades já convertidas em pedido não podem ser excluídas.
 5. **Conversão:** mova "Migração de ERP legado" de Negociação para Ganho, clique no card e use
@@ -234,7 +237,7 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 ## Testes
 
 ```bash
-docker compose exec api python manage.py test    # 64 testes do back-end
+docker compose exec api python manage.py test    # 69 testes do back-end
 docker compose exec api ruff check .             # lint
 docker compose exec web npm run typecheck        # tipos do front-end
 ```
