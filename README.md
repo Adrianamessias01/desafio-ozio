@@ -228,7 +228,7 @@ Tudo roda no [CI](.github/workflows/ci.yml) a cada push.
 
 | Onde | O que cobre | Comando |
 | --- | --- | --- |
-| Back-end (101 testes) | Transições, congelamento, conversão (pré-condição, idempotência, rollback, **duas conversões simultâneas**), API do ERP, cliente HTTP (tentativas, timeout, 4xx/5xx) e **ida e volta HTTP real** entre CRM e ERP, login e limite de tentativas | `docker compose exec api python manage.py test` |
+| Back-end (104 testes) | Transições, congelamento, conversão (pré-condição, idempotência, rollback, **duas conversões simultâneas**), API do ERP, cliente HTTP (tentativas, timeout, 4xx/5xx) e **ida e volta HTTP real** entre CRM e ERP, login e limite de tentativas, `seed` em banco novo | `docker compose exec api python manage.py test` |
 | Front-end (15 testes) | Regras de transição espelhadas, atraso, formatação pt-BR, origem do pedido | `docker compose exec web npm test` |
 | Navegador (9 testes) | Login e Sair; arrastar permitido, bloqueado e para Perdido; conversão idempotente com o pedido apontando a origem; clientes | `docker compose --profile e2e run --rm e2e` |
 | Estático | Lint (ruff), tipos (tsc), migrations em dia, esquema OpenAPI válido | ver o CI |

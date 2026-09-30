@@ -149,6 +149,8 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
     "ENUM_NAME_OVERRIDES": {"StageEnum": "crm.stages.Stage"},
+    # Agrupa as rotas por recurso (opportunities, customers, orders…) em vez de "api".
+    "SCHEMA_PATH_PREFIX": r"/api/",
 }
 
 
