@@ -88,7 +88,7 @@ npm run typecheck
 | -------------------- | -------------------------------------------------- |
 | `/`                  | Kanban do pipeline, com arrastar e soltar          |
 | `/opportunities/new` | Cadastro de oportunidade (gaveta sobre o kanban)   |
-| `/opportunities/:id` | Detalhe, mudança de estágio e conversão em pedido  |
+| `/opportunities/:id` | Detalhe, mudança de estágio, conversão e exclusão  |
 | `/customers`         | Clientes com os totais do pipeline                 |
 | `/orders`            | Pedidos gerados no ERP                             |
 

@@ -340,6 +340,21 @@ h1 {
   filter: brightness(1.08);
   border-color: var(--accent);
 }
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--surface);
+}
+.btn-danger:hover {
+  filter: brightness(1.08);
+  border-color: var(--danger);
+}
+.btn-ghost-danger {
+  color: var(--danger);
+}
+.btn-ghost-danger:hover {
+  border-color: var(--danger);
+}
 .btn[disabled] {
   opacity: 0.6;
   cursor: progress;

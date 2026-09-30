@@ -114,6 +114,9 @@ export const api = {
       body: { stage, lost_reason: lostReason },
     }),
 
+  deleteOpportunity: (id: number) =>
+    request<null>(`/opportunities/${id}/`, { method: "DELETE" }),
+
   convert: (id: number) =>
     request<ConversionResult>(`/opportunities/${id}/convert/`, { method: "POST" }),
 

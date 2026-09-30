@@ -124,6 +124,7 @@ Depois de convertida, a oportunidade fica congelada: não muda de estágio nem �
 | `POST`  | `/api/opportunities/`               | Cria uma oportunidade              |
 | `GET`   | `/api/opportunities/{id}/`          | Detalha uma oportunidade           |
 | `PATCH` | `/api/opportunities/{id}/`          | Atualiza uma oportunidade          |
+| `DELETE`| `/api/opportunities/{id}/`          | Exclui (bloqueado se já convertida) |
 | `PATCH` | `/api/opportunities/{id}/stage/`    | Move a oportunidade de estágio     |
 | `POST`  | `/api/opportunities/{id}/convert/`  | Converte em pedido no ERP          |
 | `GET`   | `/api/customers/`                   | Lista clientes com totais do pipeline |
@@ -145,7 +146,7 @@ Erros de regra de negócio seguem o formato do DRF, com um código estável para
 | Código                     | HTTP | Quando                                             |
 | -------------------------- | ---- | -------------------------------------------------- |
 | `invalid_stage_transition` | 409  | Movimentação fora das regras do pipeline           |
-| `opportunity_frozen`       | 409  | Oportunidade já convertida sendo alterada          |
+| `opportunity_frozen`       | 409  | Oportunidade já convertida sendo alterada ou excluída |
 | `lost_reason_required`     | 400  | Ida para Perdido sem motivo                        |
 | `opportunity_not_won`      | 409  | Conversão de oportunidade fora de Ganho            |
 | `erp_unavailable`          | 503  | ERP fora do ar durante a conversão                 |
@@ -188,7 +189,9 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 2. **Regra de transição:** tente levar um card de Proposta direto para Ganho. A coluna aparece
    como "Não permitido" e um aviso explica o motivo.
 3. **Perdido:** solte um card em Perdido. Um modal pede o motivo da perda.
-4. **Cadastro:** use "+ Nova oportunidade". Ela entra como Lead.
+4. **Cadastro e exclusão:** use "+ Nova oportunidade". Ela entra como Lead. Para apagar um
+   cadastro feito por engano, abra o card e use "Excluir oportunidade" (há confirmação).
+   Oportunidades já convertidas em pedido não podem ser excluídas.
 5. **Conversão:** mova "Migração de ERP legado" de Negociação para Ganho, clique no card e use
    "Converter em pedido". O pedido aparece em **Pedidos**, e "Converter novamente" devolve
    o mesmo número, sem duplicar.
@@ -220,6 +223,9 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
   que chama a API. Assim o token não vaza e a primeira resposta já chega com o kanban pronto.
 - **Atualização otimista derivada do estado do fetcher**, sem cópia local dos dados: se a API
   recusar a movimentação, o card volta sozinho para a coluna de origem.
+- **Exclusão só para engano.** Negócio encerrado vai para Perdido e mantém o histórico;
+  excluir apaga a oportunidade e é bloqueado depois da conversão, porque o pedido no ERP
+  referencia o número dela.
 - **Regras de transição espelhadas no front** (`front/app/lib/stages.ts`) só para orientar o
   arrastar; quem decide é sempre o back-end.
 
@@ -228,7 +234,7 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 ## Testes
 
 ```bash
-docker compose exec api python manage.py test    # 63 testes do back-end
+docker compose exec api python manage.py test    # 64 testes do back-end
 docker compose exec api ruff check .             # lint
 docker compose exec web npm run typecheck        # tipos do front-end
 ```

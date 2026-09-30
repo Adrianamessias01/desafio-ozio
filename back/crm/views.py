@@ -23,16 +23,18 @@ class OpportunityViewSet(
     mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
     """
     Oportunidades do pipeline.
 
     Filtros: ?stage=estágio, ?customer=id do cliente, ?search=texto no título ou cliente.
-    Não há exclusão: uma oportunidade encerrada vai para Perdido.
+    Exclusão serve para cadastros feitos por engano; negócio encerrado vai para Perdido.
+    Oportunidade convertida em pedido não pode ser excluída.
     """
 
-    http_method_names = ["get", "post", "patch", "head", "options"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
         queryset = Opportunity.objects.select_related("customer", "owner")
@@ -66,6 +68,9 @@ class OpportunityViewSet(
         serializer.instance = services.update_opportunity(
             serializer.instance.pk, **serializer.validated_data
         )
+
+    def perform_destroy(self, instance):
+        services.delete_opportunity(instance.pk)
 
     @action(detail=True, methods=["patch"])
     def stage(self, request, pk=None):

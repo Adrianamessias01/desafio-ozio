@@ -110,6 +110,16 @@ def update_opportunity(opportunity_id: int, **data) -> Opportunity:
     return opportunity
 
 
+def delete_opportunity(opportunity_id: int) -> None:
+    with transaction.atomic():
+        opportunity = Opportunity.objects.select_for_update().get(pk=opportunity_id)
+        if opportunity.is_converted:
+            raise OpportunityFrozen(
+                "A oportunidade já foi convertida em pedido e não pode ser excluída."
+            )
+        opportunity.delete()
+
+
 def move_stage(opportunity_id: int, *, target: str, user, lost_reason: str = "") -> Opportunity:
     with transaction.atomic():
         opportunity = Opportunity.objects.select_for_update().get(pk=opportunity_id)

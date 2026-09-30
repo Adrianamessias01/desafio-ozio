@@ -148,12 +148,26 @@ class OpportunityCrudTests(ApiTestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(response.data["code"], "opportunity_frozen")
 
-    def test_delete_is_not_allowed(self):
-        opportunity = self.make_opportunity()
+    def test_delete_removes_opportunity_and_history(self):
+        opportunity = self.make_opportunity(stage=Stage.NEGOTIATION)
+        self.move(opportunity, Stage.WON)
 
         response = self.client.delete(reverse("opportunity-detail", args=[opportunity.pk]))
 
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Opportunity.objects.filter(pk=opportunity.pk).exists())
+        self.assertFalse(OpportunityStageChange.objects.exists())
+
+    def test_converted_opportunity_cannot_be_deleted(self):
+        opportunity = self.make_opportunity(
+            stage=Stage.WON, erp_order_number="PED-000001", converted_at=timezone.now()
+        )
+
+        response = self.client.delete(reverse("opportunity-detail", args=[opportunity.pk]))
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data["code"], "opportunity_frozen")
+        self.assertTrue(Opportunity.objects.filter(pk=opportunity.pk).exists())
 
 
 class StageMoveTests(ApiTestCase):

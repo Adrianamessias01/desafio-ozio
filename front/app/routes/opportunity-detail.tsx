@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link, isRouteErrorResponse, useFetcher } from "react-router";
+import { Link, isRouteErrorResponse, redirect, useFetcher } from "react-router";
 
+import { ConfirmDialog } from "~/components/confirm-dialog";
 import { Drawer } from "~/components/drawer";
 import { actionError, api, loadOrThrow } from "~/lib/api.server";
 import { date, dateTime, money, taxId } from "~/lib/format";
@@ -17,10 +18,25 @@ export async function loader({ params }: Route.LoaderArgs) {
   return { opportunity };
 }
 
-/** Conversão em pedido. Erros (ERP fora do ar, fora de Ganho) voltam como dado para a tela. */
-export async function action({ params }: Route.ActionArgs) {
+/**
+ * Conversão em pedido e exclusão. Erros (ERP fora do ar, fora de Ganho, já convertida)
+ * voltam como dado para a tela.
+ */
+export async function action({ request, params }: Route.ActionArgs) {
+  const form = await request.formData();
+  const id = Number(params.id);
+
+  if (form.get("intent") === "delete") {
+    try {
+      await api.deleteOpportunity(id);
+    } catch (error) {
+      return actionError(error);
+    }
+    return redirect("/");
+  }
+
   try {
-    const result = await api.convert(Number(params.id));
+    const result = await api.convert(id);
     return { ok: true as const, orderNumber: result.order_number, created: result.created };
   } catch (error) {
     return actionError(error);
@@ -31,7 +47,11 @@ export default function OpportunityDrawer({ loaderData }: Route.ComponentProps) 
   const o = loaderData.opportunity;
 
   return (
-    <Drawer title={o.title} eyebrow={`Oportunidade #${o.id}`}>
+    <Drawer
+      title={o.title}
+      eyebrow={`Oportunidade #${o.id}`}
+      footer={o.is_converted ? undefined : <DeleteOpportunity o={o} />}
+    >
       <div className="drawer-body">
         <dl>
           <dt>Cliente</dt>
@@ -86,6 +106,39 @@ export default function OpportunityDrawer({ loaderData }: Route.ComponentProps) 
         </section>
       </div>
     </Drawer>
+  );
+}
+
+/** Exclusão para cadastros feitos por engano. Convertidas não mostram o botão. */
+function DeleteOpportunity({ o }: { o: OpportunityDetail }) {
+  const fetcher = useFetcher<typeof action>({ key: `delete-${o.id}` });
+  const [confirming, setConfirming] = useState(false);
+  const busy = fetcher.state !== "idle";
+  const error = fetcher.data && !fetcher.data.ok ? fetcher.data.error : null;
+
+  return (
+    <>
+      <button type="button" className="btn btn-ghost-danger" onClick={() => setConfirming(true)}>
+        Excluir oportunidade
+      </button>
+      {confirming && (
+        <ConfirmDialog
+          title="Excluir oportunidade"
+          confirmLabel="Excluir"
+          busy={busy}
+          error={error}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => fetcher.submit({ intent: "delete" }, { method: "post" })}
+        >
+          <p style={{ margin: 0 }}>
+            “{o.title}” e o histórico de estágios serão apagados. Essa ação não pode ser desfeita.
+          </p>
+          <p style={{ margin: "8px 0 0" }}>
+            Se o negócio só não foi fechado, prefira mover para <strong>Perdido</strong>.
+          </p>
+        </ConfirmDialog>
+      )}
+    </>
   );
 }
 
