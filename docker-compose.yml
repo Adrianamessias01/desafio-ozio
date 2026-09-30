@@ -39,5 +39,23 @@ services:
       db:
         condition: service_healthy
 
+  web:
+    build:
+      context: ./front
+      target: development
+    environment:
+      # O servidor SSR fala com a API pela rede interna do compose.
+      API_BASE_URL: http://api:8000/api
+      API_TOKEN: dev-only-api-token
+      WATCH_POLLING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./front:/app
+      # node_modules fica no container, não na pasta do projeto.
+      - /app/node_modules
+    depends_on:
+      - api
+
 volumes:
   pgdata:

@@ -119,6 +119,7 @@ Depois de convertida, a oportunidade fica congelada: não muda de estágio nem �
 | `GET`   | `/api/customers/{id}/`              | Detalha um cliente                 |
 | `GET`   | `/api/orders/`                      | Lista pedidos gerados              |
 | `GET`   | `/api/orders/{id}/`                 | Detalha um pedido com seus itens   |
+| `GET`   | `/api/me/`                          | Usuário dono do token              |
 | `GET`   | `/api/health/`                      | Verificação de saúde (pública)     |
 
 Todas as rotas, exceto `/api/health/`, exigem o header `Authorization: Token <token>`.
@@ -158,8 +159,8 @@ cd desafio-ozio
 docker compose up --build
 ```
 
-A API sobe em `http://localhost:8000/api/` (verificação: `GET /api/health/`) e o admin
-em `http://localhost:8000/admin/`. Na subida, o compose aplica as migrations e roda o
+A aplicação abre em **`http://localhost:3000`**. A API sobe em `http://localhost:8000/api/`
+(verificação: `GET /api/health/`) e o admin em `http://localhost:8000/admin/`. Na subida, o compose aplica as migrations e roda o
 `seed`, que cria vendedores, clientes e oportunidades de exemplo. Para testar a API:
 
 ```bash
@@ -179,8 +180,8 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 - [x] API REST do CRM
 - [x] Módulo ERP e criação de pedidos
 - [x] Regra de conversão com idempotência
-- [ ] Front-end com SSR
-- [ ] Kanban com drag and drop
+- [x] Front-end com SSR
+- [x] Kanban com drag and drop
 - [ ] Conversão pela interface
 - [ ] Testes
 - [ ] Ajustes visuais e documentação final

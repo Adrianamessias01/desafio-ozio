@@ -8,31 +8,52 @@ Aplicação React com React Router em modo framework, renderizada no servidor (S
 front/
 ├── app/
 │   ├── routes/          Rotas com loaders e actions
-│   ├── components/      Componentes de interface
-│   ├── services/        Cliente HTTP da API
+│   ├── components/      Componentes de interface (gaveta, avisos, modal)
+│   ├── lib/
+│   │   ├── api.server.ts  Cliente HTTP da API (só roda no servidor)
+│   │   ├── stages.ts      Regras de transição, espelhando o back-end
+│   │   └── format.ts      Moeda, datas e CNPJ em pt-BR
+│   ├── app.css
 │   └── root.tsx
 ├── package.json
 └── vite.config.ts
 ```
 
-## Renderização
+## Renderização e dados
 
 Os dados do pipeline são carregados no servidor pelos `loader` das rotas, de modo que a
-primeira resposta já chega com o kanban montado. As alterações — mover um card entre
-estágios, criar uma oportunidade, converter em pedido — passam por `action`, com
-atualização otimista da interface enquanto a requisição está em andamento.
+primeira resposta já chega com o kanban montado. As alterações (mover um card, criar uma
+oportunidade) passam por `action`.
+
+Só o servidor do React Router conversa com a API. O token fica em `API_TOKEN`, no servidor,
+e nunca é enviado ao navegador.
+
+### Arrastar e soltar
+
+- Feito com `@dnd-kit/core`, com suporte a mouse, toque (segurar o card) e teclado
+  (Espaço pega e solta o card, setas movem, Esc cancela).
+- Ao pegar um card, as colunas permitidas ficam destacadas e as proibidas esmaecidas,
+  seguindo as mesmas regras de `back/crm/stages.py`.
+- **Atualização otimista:** o card aparece no destino assim que é solto, derivado do
+  `formData` do fetcher em andamento. Se a API recusar, o card volta sozinho para a coluna
+  original e um aviso mostra o motivo.
+- Mover para Perdido abre um modal pedindo o motivo da perda.
+- Na gaveta de detalhe há também o seletor "Mover para", alternativa ao arrastar.
 
 ## Executando
+
+Com Docker, na raiz do repositório: `docker compose up --build`. O front sobe em
+`http://localhost:3000`.
+
+Sem Docker (Node 20+ e a API rodando em `localhost:8000`):
 
 ```bash
 npm install
 
-cp .env.example .env           # aponte para a API do back-end
+cp .env.example .env           # aponte para a API e informe o token
 
 npm run dev
 ```
-
-Aplicação em `http://localhost:3000`.
 
 ## Build de produção
 
@@ -41,17 +62,26 @@ npm run build
 npm start
 ```
 
+O `Dockerfile` também tem um estágio `production` com o build pronto.
+
+## Verificações
+
+```bash
+npm run typecheck
+```
+
 ## Variáveis de ambiente
 
-| Variável       | Descrição                                |
-| -------------- | ---------------------------------------- |
-| `API_BASE_URL` | URL base da API (ex.: `http://localhost:8000/api`) |
+| Variável        | Descrição                                                        |
+| --------------- | ---------------------------------------------------------------- |
+| `API_BASE_URL`  | URL base da API (ex.: `http://localhost:8000/api`)               |
+| `API_TOKEN`     | Token do vendedor padrão, o mesmo `API_TOKEN` do back-end        |
+| `WATCH_POLLING` | `true` para o recarregamento automático funcionar em volume Docker no Windows |
 
 ## Telas
 
-| Rota                 | Descrição                                         |
-| -------------------- | ------------------------------------------------- |
+| Rota                 | Descrição                                          |
+| -------------------- | -------------------------------------------------- |
 | `/`                  | Kanban do pipeline, com arrastar e soltar          |
-| `/opportunities/new` | Cadastro de oportunidade                           |
-| `/opportunities/:id` | Detalhe da oportunidade e conversão em pedido      |
-| `/orders`            | Pedidos gerados no ERP                             |
+| `/opportunities/new` | Cadastro de oportunidade (gaveta sobre o kanban)   |
+| `/opportunities/:id` | Detalhe da oportunidade (gaveta sobre o kanban)    |

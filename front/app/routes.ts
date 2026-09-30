@@ -1,0 +1,11 @@
+import { type RouteConfig, layout, route } from "@react-router/dev/routes";
+
+export default [
+  layout("routes/shell.tsx", [
+    // Cadastro e detalhe abrem como gaveta sobre o kanban, com URL própria.
+    route("/", "routes/pipeline.tsx", [
+      route("opportunities/new", "routes/opportunity-new.tsx"),
+      route("opportunities/:id", "routes/opportunity-detail.tsx"),
+    ]),
+  ]),
+] satisfies RouteConfig;

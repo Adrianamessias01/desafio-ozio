@@ -1,0 +1,83 @@
+import {
+  isRouteErrorResponse,
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+} from "react-router";
+
+import type { Route } from "./+types/root";
+import { ToastProvider } from "./components/toast";
+import "./app.css";
+
+export const links: Route.LinksFunction = () => [
+  { rel: "preconnect", href: "https://fonts.googleapis.com" },
+  { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+  {
+    rel: "stylesheet",
+    href: "https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap",
+  },
+];
+
+export function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="pt-BR">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        {children}
+        <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <Outlet />
+    </ToastProvider>
+  );
+}
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  let title = "Algo deu errado";
+  let details = "Ocorreu um erro inesperado. Recarregue a página para tentar de novo.";
+  let stack: string | undefined;
+
+  if (isRouteErrorResponse(error)) {
+    title = error.status === 404 ? "Página não encontrada" : `Erro ${error.status}`;
+    details =
+      error.status === 404
+        ? "O endereço acessado não existe."
+        : typeof error.data === "string"
+          ? error.data
+          : error.statusText || details;
+  } else if (import.meta.env.DEV && error instanceof Error) {
+    details = error.message;
+    stack = error.stack;
+  }
+
+  return (
+    <main className="error-page">
+      <h1>{title}</h1>
+      <p className="sub">{details}</p>
+      <p>
+        <a className="btn" href="/">
+          Voltar para o pipeline
+        </a>
+      </p>
+      {stack && (
+        <pre style={{ overflowX: "auto" }}>
+          <code>{stack}</code>
+        </pre>
+      )}
+    </main>
+  );
+}
