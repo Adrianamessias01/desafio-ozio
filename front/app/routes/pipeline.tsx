@@ -35,6 +35,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const params = new URL(request.url).searchParams;
   const filters = {
     search: params.get("q")?.trim() ?? "",
+    customer: params.get("customer") ?? "",
     owner: params.get("owner") ?? "",
     closeFrom: params.get("from") ?? "",
     closeTo: params.get("to") ?? "",
@@ -148,7 +149,10 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
   }
 
   const { filters } = loaderData;
-  const filtering = Boolean(filters.search || filters.owner || filters.closeFrom || filters.closeTo);
+  const filtering = Boolean(
+    filters.search || filters.customer || filters.owner || filters.closeFrom || filters.closeTo,
+  );
+  const customerName = loaderData.opportunities[0]?.customer.name;
 
   return (
     <TodayContext.Provider value={loaderData.today}>
@@ -168,6 +172,7 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
           }}
         >
           {filters.search && <input type="hidden" name="q" value={filters.search} />}
+          {filters.customer && <input type="hidden" name="customer" value={filters.customer} />}
           <label className="filter-field">
             <UserIcon />
             <span className="sr-only">Vendedor</span>
@@ -207,6 +212,7 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
       {filtering && (
         <p className="search-note" role="status">
           {opportunities.length} oportunidade(s)
+          {filters.customer && customerName ? ` do cliente ${customerName}` : ""}
           {filters.search ? ` para “${filters.search}”` : ""} com os filtros aplicados.
           <Link to="/" className="btn">
             Limpar filtros

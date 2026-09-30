@@ -17,6 +17,7 @@ const BASE_URL = (process.env.API_BASE_URL ?? "http://localhost:8000/api").repla
 
 export interface PipelineFilters {
   search?: string;
+  customer?: string;
   owner?: string;
   closeFrom?: string;
   closeTo?: string;
@@ -141,6 +142,7 @@ function createApi(token: string) {
     listOpportunities: (filters: PipelineFilters = {}) => {
       const params = new URLSearchParams();
       if (filters.search) params.set("search", filters.search);
+      if (filters.customer) params.set("customer", filters.customer);
       if (filters.owner) params.set("owner", filters.owner);
       if (filters.closeFrom) params.set("close_from", filters.closeFrom);
       if (filters.closeTo) params.set("close_to", filters.closeTo);
