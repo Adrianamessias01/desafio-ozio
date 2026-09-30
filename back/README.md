@@ -70,6 +70,14 @@ Cobertura prioritária:
 - bloqueio de conversão fora do estágio `Ganho`
 - idempotência da conversão
 - rollback quando o ERP falha
+- conversões simultâneas da mesma oportunidade (teste com duas threads)
+
+| Arquivo                        | O que cobre                                              |
+| ------------------------------ | -------------------------------------------------------- |
+| `crm/tests/test_models.py`     | Constraints do banco e tabela de transições              |
+| `crm/tests/test_api.py`        | Rotas do CRM, regras de estágio, congelamento, clientes  |
+| `crm/tests/test_conversion.py` | Conversão: pré-condição, idempotência, rollback, concorrência |
+| `erp/tests/`                   | Modelos, gateway idempotente, falha simulada, rota de pedidos |
 
 ## Variáveis de ambiente
 

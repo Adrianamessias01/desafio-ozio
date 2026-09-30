@@ -84,6 +84,25 @@ A conversão é o ponto crítico da aplicação e respeita as seguintes garantia
 - **Erro visível** — indisponibilidade do ERP retorna um erro tratado, exibido ao
   usuário no front-end.
 
+Como cada garantia é implementada (`back/crm/services.py`, função `convert_opportunity`):
+
+| Garantia       | Implementação                                                                 |
+| -------------- | ----------------------------------------------------------------------------- |
+| Pré-condição   | Fora de `Ganho` responde `409` com o código `opportunity_not_won`              |
+| Idempotência   | Oportunidade já convertida devolve o pedido existente sem chamar o ERP (`200`); a chave `crm-opportunity:<id>` enviada ao ERP é única no banco, então nem uma repetição que chegue ao ERP cria outro pedido |
+| Concorrência   | `select_for_update` na oportunidade: duas conversões simultâneas geram um único pedido |
+| Atomicidade    | Pedido e marcação da oportunidade na mesma `transaction.atomic`               |
+| Erro do ERP    | `503` com o código `erp_unavailable`; nada é gravado e a oportunidade continua em `Ganho`, pronta para nova tentativa |
+
+Resposta de sucesso (`201` na primeira conversão, `200` nas seguintes):
+
+```json
+{ "order_number": "PED-000002", "created": true, "opportunity": { "...": "..." } }
+```
+
+Depois de convertida, a oportunidade fica congelada: não muda de estágio nem é editada
+(`409`, código `opportunity_frozen`).
+
 ---
 
 ## API
@@ -116,6 +135,7 @@ Erros de regra de negócio seguem o formato do DRF, com um código estável para
 | `invalid_stage_transition` | 409  | Movimentação fora das regras do pipeline           |
 | `opportunity_frozen`       | 409  | Oportunidade já convertida sendo alterada          |
 | `lost_reason_required`     | 400  | Ida para Perdido sem motivo                        |
+| `opportunity_not_won`      | 409  | Conversão de oportunidade fora de Ganho            |
 | `erp_unavailable`          | 503  | ERP fora do ar durante a conversão                 |
 
 ### Autenticação sem tela de login
@@ -158,7 +178,7 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 - [x] Modelagem e migrations
 - [x] API REST do CRM
 - [x] Módulo ERP e criação de pedidos
-- [ ] Regra de conversão com idempotência
+- [x] Regra de conversão com idempotência
 - [ ] Front-end com SSR
 - [ ] Kanban com drag and drop
 - [ ] Conversão pela interface

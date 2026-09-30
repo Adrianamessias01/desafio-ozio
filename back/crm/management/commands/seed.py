@@ -18,6 +18,7 @@ from rest_framework.authtoken.models import Token
 from crm import services
 from crm.models import Customer, Opportunity
 from crm.stages import Stage
+from erp.services import ErpUnavailable
 
 SELLERS = [
     ("carla", "Carla", "Souza"),
@@ -59,6 +60,9 @@ OPPORTUNITIES = [
      [Stage.QUALIFICATION, Stage.LOST]),
 ]
 
+# Oportunidade ganha que já sai convertida, para a tela de pedidos não começar vazia.
+CONVERTED = "Módulo de compras"
+
 
 class Command(BaseCommand):
     help = "Cria vendedores, clientes e oportunidades de exemplo."
@@ -90,6 +94,17 @@ class Command(BaseCommand):
                     lost_reason="Cliente optou por uma solução interna.",
                 )
         self.stdout.write(self.style.SUCCESS(f"{len(OPPORTUNITIES)} oportunidades criadas."))
+        self._convert(CONVERTED)
+
+    def _convert(self, title):
+        opportunity = Opportunity.objects.get(title=title)
+        try:
+            result = services.convert_opportunity(opportunity.pk)
+        except ErpUnavailable:
+            message = "ERP indisponível; nenhuma oportunidade convertida."
+            self.stdout.write(self.style.WARNING(message))
+            return
+        self.stdout.write(f"“{title}” convertida no pedido {result.order_number}.")
 
     def _sellers(self):
         User = get_user_model()

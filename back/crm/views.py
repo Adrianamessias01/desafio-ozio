@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -28,7 +28,7 @@ class OpportunityViewSet(
     """
     Oportunidades do pipeline.
 
-    Filtros: `?stage=<estágio>`, `?customer=<id>`, `?search=<texto no título ou cliente>`.
+    Filtros: ?stage=estágio, ?customer=id do cliente, ?search=texto no título ou cliente.
     Não há exclusão: uma oportunidade encerrada vai para Perdido.
     """
 
@@ -80,6 +80,20 @@ class OpportunityViewSet(
             lost_reason=payload.validated_data.get("lost_reason", ""),
         )
         return Response(OpportunityDetailSerializer(_reload(opportunity.pk)).data)
+
+    @action(detail=True, methods=["post"])
+    def convert(self, request, pk=None):
+        """201 quando o pedido é criado agora; 200 quando a oportunidade já estava convertida."""
+        opportunity = self.get_object()
+        result = services.convert_opportunity(opportunity.pk)
+        return Response(
+            {
+                "order_number": result.order_number,
+                "created": result.created,
+                "opportunity": OpportunityDetailSerializer(_reload(opportunity.pk)).data,
+            },
+            status=status.HTTP_201_CREATED if result.created else status.HTTP_200_OK,
+        )
 
 
 class CustomerViewSet(viewsets.ReadOnlyModelViewSet):
