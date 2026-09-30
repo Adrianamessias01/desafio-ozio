@@ -128,5 +128,7 @@ export const api = {
   createCustomer: (body: { name: string; document: string; email: string; phone: string }) =>
     request<Customer>("/customers/", { method: "POST", body }),
 
-  listOrders: () => request<Order[]>("/orders/"),
+  /** `ordering`: campo da API, com "-" na frente para decrescente (ex.: "-created_at"). */
+  listOrders: (ordering = "-created_at") =>
+    request<Order[]>(`/orders/?ordering=${encodeURIComponent(ordering)}`),
 };

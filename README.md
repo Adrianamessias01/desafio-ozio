@@ -138,7 +138,8 @@ Depois de convertida, a oportunidade fica congelada: não muda de estágio nem �
 Todas as rotas, exceto `/api/health/`, exigem o header `Authorization: Token <token>`.
 Filtros da listagem de oportunidades: `?stage=`, `?customer=` e `?search=`. A listagem de
 clientes aceita `?ordering=` com `name`, `document`, `open_count`, `won_count` ou
-`open_amount` (prefixo `-` para decrescente).
+`open_amount`, e a de pedidos com `number`, `customer_name`, `status`, `created_at` ou
+`total` (prefixo `-` para decrescente).
 
 Erros de regra de negócio seguem o formato do DRF, com um código estável para o front:
 
@@ -239,7 +240,7 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 ## Testes
 
 ```bash
-docker compose exec api python manage.py test    # 71 testes do back-end
+docker compose exec api python manage.py test    # 74 testes do back-end
 docker compose exec api ruff check .             # lint
 docker compose exec web npm run typecheck        # tipos do front-end
 ```

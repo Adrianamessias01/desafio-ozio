@@ -81,6 +81,37 @@ class OrderApiTests(APITestCase):
         self.assertEqual(order["status_label"], "Aberto")
         self.assertEqual(len(order["items"]), 2)
 
+    def test_lists_most_recent_first_by_default(self):
+        LocalErpGateway().create_order(make_request("crm-opportunity:1"))
+        LocalErpGateway().create_order(make_request("crm-opportunity:2"))
+
+        response = self.client.get(reverse("order-list"))
+
+        keys = [o["idempotency_key"] for o in response.data]
+        self.assertEqual(keys, ["crm-opportunity:2", "crm-opportunity:1"])
+
+    def test_lists_by_requested_field(self):
+        gateway = LocalErpGateway()
+        gateway.create_order(make_request("crm-opportunity:1"))
+        gateway.create_order(
+            OrderRequest(
+                idempotency_key="crm-opportunity:2",
+                customer_name="Beta",
+                customer_document="98765432000110",
+                items=(OrderLine(description="Extra", quantity=1, unit_price=Decimal("10.00")),),
+            )
+        )
+
+        response = self.client.get(reverse("order-list"), {"ordering": "total"})
+
+        self.assertEqual([o["total"] for o in response.data], ["10.00", "1750.00"])
+
+    def test_rejects_unknown_ordering(self):
+        response = self.client.get(reverse("order-list"), {"ordering": "items"})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ordering", response.data)
+
     def test_orders_are_read_only(self):
         response = self.client.post(reverse("order-list"), {}, format="json")
 

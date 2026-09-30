@@ -1,15 +1,20 @@
 import { PageError } from "~/components/page-error";
+import { SortHeader, readSort } from "~/components/sort-header";
 import { api, loadOrThrow } from "~/lib/api.server";
 import { dateTime, money, taxId } from "~/lib/format";
 import type { Route } from "./+types/orders";
+
+const SORTABLE = ["number", "customer_name", "status", "created_at", "total"] as const;
 
 export function meta() {
   return [{ title: "Pedidos · Pipeline Comercial" }];
 }
 
-export async function loader() {
-  const orders = await loadOrThrow(() => api.listOrders());
-  return { orders };
+export async function loader({ request }: Route.LoaderArgs) {
+  const sort = readSort(new URL(request.url), SORTABLE, { sort: "created_at", dir: "desc" });
+  const ordering = `${sort.dir === "desc" ? "-" : ""}${sort.sort}`;
+  const orders = await loadOrThrow(() => api.listOrders(ordering));
+  return { orders, sort };
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
@@ -17,7 +22,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 }
 
 export default function Orders({ loaderData }: Route.ComponentProps) {
-  const { orders } = loaderData;
+  const { orders, sort } = loaderData;
   const total = orders.reduce((sum, order) => sum + Number(order.total), 0);
 
   return (
@@ -49,12 +54,12 @@ export default function Orders({ loaderData }: Route.ComponentProps) {
           <table>
             <thead>
               <tr>
-                <th>Número</th>
-                <th>Cliente</th>
+                <SortHeader field="number" label="Número" current={sort} />
+                <SortHeader field="customer_name" label="Cliente" current={sort} />
                 <th>Itens</th>
-                <th>Situação</th>
-                <th>Criado em</th>
-                <th className="num">Total</th>
+                <SortHeader field="status" label="Situação" current={sort} />
+                <SortHeader field="created_at" label="Criado em" current={sort} firstDir="desc" />
+                <SortHeader field="total" label="Total" current={sort} firstDir="desc" className="num" />
               </tr>
             </thead>
             <tbody>

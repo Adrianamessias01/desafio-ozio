@@ -91,7 +91,7 @@ npm run typecheck
 | `/opportunities/:id` | Detalhe, mudança de estágio, conversão e exclusão  |
 | `/customers`         | Clientes com os totais do pipeline, ordenáveis pelo título da coluna (`?sort=` e `?dir=` na URL) |
 | `/customers/new`     | Cadastro de cliente (gaveta). Com `?next=opportunity`, volta ao cadastro de oportunidade com o cliente selecionado |
-| `/orders`            | Pedidos gerados no ERP                             |
+| `/orders`            | Pedidos gerados no ERP, ordenáveis pelo título da coluna (padrão: mais recentes) |
 
 ## Conversão em pedido
 
