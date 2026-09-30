@@ -28,6 +28,14 @@ const ALLOWED: Record<StageKey, StageKey[]> = {
 
 export const OPEN_STAGES: StageKey[] = ["lead", "qualification", "proposal", "negotiation"];
 
+/** Aberta e com a previsão de fechamento já vencida. `today` no formato "AAAA-MM-DD". */
+export function isOverdue(
+  o: Pick<Opportunity, "stage" | "expected_close_date">,
+  today: string,
+) {
+  return OPEN_STAGES.includes(o.stage) && !!o.expected_close_date && o.expected_close_date < today;
+}
+
 /** Chave do fetcher de movimentação: kanban e gaveta de detalhe compartilham o mesmo estado. */
 export const moveKey = (id: number) => `move-${id}`;
 

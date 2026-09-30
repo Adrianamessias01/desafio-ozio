@@ -12,22 +12,17 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type MouseEvent } from "react";
 import { Link, Outlet, useFetcher, useFetchers, useLocation, useSubmit } from "react-router";
 
-import {
-  BuildingIcon,
-  CalendarIcon,
-  CheckCircleIcon,
-  InfoIcon,
-  UserIcon,
-} from "~/components/icons";
+import { CalendarIcon, CheckCircleIcon, InfoIcon, UserIcon } from "~/components/icons";
+import { NameAvatar } from "~/components/avatar";
 import { LostReasonDialog } from "~/components/lost-reason-dialog";
 import { PageError } from "~/components/page-error";
 import { useToast } from "~/components/toast";
 import { ApiError, actionError, apiFor, loadOrThrow } from "~/lib/api.server";
-import { date, initials, money } from "~/lib/format";
-import { STAGES, blockReason, canMove, isStage, moveKey } from "~/lib/stages";
+import { date, initials, money, moneyShort, todayISO } from "~/lib/format";
+import { STAGES, blockReason, canMove, isOverdue, isStage, moveKey } from "~/lib/stages";
 import type { Opportunity, StageKey } from "~/lib/types";
 import type { Route } from "./+types/pipeline";
 
@@ -50,7 +45,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     // Status do ERP é informativo: se a consulta falhar, a faixa mostra "desconhecido".
     api.erpStatus().catch(() => null),
   ]);
-  return { opportunities, sellers, erpAvailable: erp?.available ?? null, filters };
+  return {
+    opportunities,
+    sellers,
+    erpAvailable: erp?.available ?? null,
+    filters,
+    today: todayISO(),
+  };
 }
 
 /** Movimentação de estágio vinda do kanban (e da gaveta de detalhe). */
@@ -150,7 +151,7 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
   const filtering = Boolean(filters.search || filters.owner || filters.closeFrom || filters.closeTo);
 
   return (
-    <>
+    <TodayContext.Provider value={loaderData.today}>
       <div className="page-head">
         <div>
           <h1>Pipeline de oportunidades</h1>
@@ -270,7 +271,7 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
       )}
 
       <Outlet />
-    </>
+    </TodayContext.Provider>
   );
 }
 
@@ -321,9 +322,12 @@ function Column({
       style={{ "--c": `var(--st-${stage.key})` } as React.CSSProperties}
       aria-label={stage.label}
     >
-      <div className="col-head" title={`Total: ${money(total)}`}>
+      <div className="col-head">
         <span className="col-name">{stage.label}</span>
         <span className="col-count">{items.length}</span>
+        <span className="col-sum" title={`Total da coluna: ${money(total)}`}>
+          {moneyShort(total)}
+        </span>
       </div>
       <div className="col-body">
         {drop && <div className="col-hint">{drop === "allowed" ? "Soltar aqui" : "Não permitido"}</div>}
@@ -389,48 +393,56 @@ function CardContent({ o, className }: { o: Opportunity; className: string }) {
   );
 }
 
+// Data de hoje calculada no servidor, para servidor e navegador marcarem os mesmos atrasos.
+const TodayContext = createContext("");
+
 function CardBody({ o }: { o: Opportunity }) {
-  let badge = null;
+  const overdue = isOverdue(o, useContext(TodayContext));
+
+  let status = null;
   if (o.stage === "won") {
-    badge = o.is_converted ? (
+    status = o.is_converted ? (
       <span className="card-erp">
         <CheckCircleIcon />
-        Pedido criado no ERP
-        <span className="erp-tag mono">{o.erp_order_number}</span>
+        Pedido <span className="mono">{o.erp_order_number}</span>
       </span>
     ) : (
       <span className="pill pill-accent">Pronto para converter</span>
     );
-  } else if (o.stage === "lost") {
-    badge = <span className="pill pill-danger">Perdida</span>;
+  } else if (o.stage === "lost" && o.lost_reason) {
+    status = (
+      <span className="card-reason" title={o.lost_reason}>
+        {o.lost_reason}
+      </span>
+    );
   }
 
   return (
     <>
       <span className="card-top">
-        <span className="card-icon">
-          <BuildingIcon />
-        </span>
+        <NameAvatar name={o.customer.name} size="sm" />
         <span className="card-heading">
           <span className="card-title">{o.title}</span>
-          <span className="card-amount">{money(o.amount)}</span>
+          <span className="card-customer">{o.customer.name}</span>
         </span>
       </span>
-      <span className="card-customer">{o.customer.name}</span>
-      {badge}
-      <span className="card-foot">
-        <span className="card-owner">
-          <span className="card-owner-initials" aria-hidden="true">
-            {initials(o.owner.name)}
-          </span>
-          {o.owner.name.split(" ")[0]}
+      {o.expected_close_date && (
+        <span
+          className="card-date"
+          data-overdue={overdue || undefined}
+          title={overdue ? "Previsão de fechamento vencida" : "Previsão de fechamento"}
+        >
+          <CalendarIcon />
+          {date(o.expected_close_date)}
+          {overdue && <strong>· Atrasada</strong>}
         </span>
-        {o.expected_close_date && (
-          <span className="card-date" title="Previsão de fechamento">
-            <CalendarIcon />
-            {date(o.expected_close_date)}
-          </span>
-        )}
+      )}
+      {status}
+      <span className="card-foot">
+        <span className="card-amount">{money(o.amount)}</span>
+        <span className="card-owner" title={`Responsável: ${o.owner.name}`}>
+          {initials(o.owner.name)}
+        </span>
       </span>
     </>
   );

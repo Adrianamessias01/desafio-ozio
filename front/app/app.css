@@ -113,7 +113,7 @@ a {
 /* ---------- estrutura: menu lateral escuro + barra superior + conteúdo ---------- */
 .app {
   display: grid;
-  grid-template-columns: 216px minmax(0, 1fr);
+  grid-template-columns: 232px minmax(0, 1fr);
   min-height: 100vh;
 }
 .sidebar {
@@ -130,12 +130,13 @@ a {
 .brand {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 17px;
+  font-size: 15.5px;
   letter-spacing: -0.01em;
+  white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 8px 8px;
+  gap: 9px;
+  padding: 4px 6px 8px;
   text-decoration: none;
   color: var(--side-ink-strong);
 }
@@ -574,12 +575,10 @@ h1 {
   font-weight: 500;
 }
 .stat-value {
-  font-family: var(--font-display);
-  font-size: 23px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.01em;
   margin-top: 2px;
-  font-variant-numeric: tabular-nums;
 }
 .section-label,
 th {
@@ -708,7 +707,7 @@ th {
 .board {
   display: grid;
   /* 6 colunas cabem sem rolagem a partir de ~1400px; abaixo disso o quadro rola na horizontal. */
-  grid-template-columns: repeat(6, minmax(172px, 1fr));
+  grid-template-columns: repeat(6, minmax(168px, 1fr));
   gap: 12px;
   min-width: min-content;
 }
@@ -725,8 +724,12 @@ th {
 .col-head {
   padding: 14px 14px 6px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 2px 8px;
+}
+.col-head .col-count {
+  margin-left: auto;
 }
 .dot {
   width: 9px;
@@ -742,7 +745,6 @@ th {
   color: color-mix(in srgb, var(--c) 72%, var(--ink));
 }
 .col-count {
-  margin-left: auto;
   font-size: 12px;
   font-weight: 600;
   color: var(--c);
@@ -752,13 +754,13 @@ th {
   padding: 1px 7px;
   text-align: center;
 }
-/* Total em linha própria, alinhado ao nome: não disputa espaço em colunas estreitas. */
+/* Quanto dinheiro há na etapa: linha própria sob o nome, para não disputar espaço. */
 .col-sum {
   flex-basis: 100%;
-  padding-left: 17px;
   white-space: nowrap;
   font-size: 12px;
-  color: var(--muted);
+  font-weight: 600;
+  color: color-mix(in srgb, var(--c) 55%, var(--muted));
 }
 .col-body {
   padding: 10px 9px 12px;
@@ -833,101 +835,119 @@ th {
 }
 .card-top {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-start;
 }
-.card-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+/* Iniciais do cliente/empresa com cor fixa por nome (ver components/avatar.tsx). */
+.name-avatar {
+  --tint: hsl(var(--hue) 55% 42%);
   display: grid;
   place-items: center;
   flex: none;
-  color: var(--c);
-  background: color-mix(in srgb, var(--c) 13%, var(--surface));
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 14%, var(--surface));
 }
-.card-icon .icon {
-  width: 15px;
-  height: 15px;
+.name-avatar-md {
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+}
+.name-avatar-sm {
+  width: 30px;
+  height: 30px;
+  font-size: 11px;
+  border-radius: 9px;
+}
+@media (prefers-color-scheme: dark) {
+  .name-avatar {
+    --tint: hsl(var(--hue) 65% 68%);
+  }
 }
 .card-heading {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
 }
 .card-title {
   font-weight: 600;
   font-size: 13.5px;
   line-height: 1.3;
-}
-.card-amount {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 500;
   color: var(--ink);
 }
 .card-customer {
   color: var(--muted);
   font-size: 12.5px;
 }
+.card-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.card-date .icon {
+  width: 13px;
+  height: 13px;
+}
+.card-date[data-overdue] {
+  color: var(--danger);
+}
+.card-date strong {
+  font-weight: 600;
+}
 .card-erp {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 5px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ok);
 }
 .card-erp .icon {
   width: 15px;
   height: 15px;
 }
-.erp-tag {
-  font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 6px;
-  background: var(--accent-soft);
-  color: var(--accent);
+.card-reason {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  padding-left: 8px;
+  border-left: 2px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .card-foot {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
-  padding-top: 8px;
+  gap: 8px;
+  padding-top: 9px;
   border-top: 1px solid var(--line);
-  font-size: 12px;
-  color: var(--muted);
+}
+.card-amount {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
 }
 .card-owner {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.card-owner-initials {
-  width: 20px;
-  height: 20px;
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: var(--surface-2);
   color: var(--muted);
-  font-size: 9.5px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   display: grid;
   place-items: center;
   flex: none;
-}
-.card-date {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.card-date .icon {
-  width: 13px;
-  height: 13px;
 }
 .pill {
   display: inline-flex;
@@ -1127,6 +1147,103 @@ dd {
 .alert-ok {
   background: var(--ok-soft);
   color: var(--ok);
+}
+/* Detalhe: valor em destaque e progresso nas etapas do funil. */
+.detail-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.detail-hero .name-avatar {
+  width: 44px;
+  height: 44px;
+  font-size: 14px;
+  border-radius: 12px;
+}
+.detail-amount {
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.stage-progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+.stage-progress li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+/* Linha que liga uma etapa à próxima. */
+.stage-progress li + li::before {
+  content: "";
+  position: absolute;
+  top: 13px;
+  right: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--line);
+  z-index: 0;
+}
+.stage-progress li[data-state="done"] + li::before,
+.stage-progress li[data-state="current"]::before {
+  background: var(--accent);
+}
+.step-dot {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  color: var(--muted);
+}
+.stage-progress [data-state="done"] .step-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.stage-progress [data-state="current"] .step-dot {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.step-label {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.stage-progress [aria-current="step"] .step-label {
+  color: var(--ink);
+  font-weight: 600;
+}
+.lost-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+}
+.lost-banner span {
+  color: var(--ink);
+}
+dd.overdue {
+  color: var(--danger);
+  font-weight: 500;
 }
 .timeline {
   list-style: none;

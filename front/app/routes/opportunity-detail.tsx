@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, isRouteErrorResponse, redirect, useFetcher } from "react-router";
 
+import { NameAvatar } from "~/components/avatar";
 import { ConfirmDialog } from "~/components/confirm-dialog";
 import { Drawer } from "~/components/drawer";
 import { actionError, apiFor, loadOrThrow } from "~/lib/api.server";
-import { date, dateTime, money, taxId } from "~/lib/format";
-import { STAGE_LABEL, allowedTargets, moveKey } from "~/lib/stages";
+import { date, dateTime, money, taxId, todayISO } from "~/lib/format";
+import { STAGE_LABEL, allowedTargets, isOverdue, moveKey } from "~/lib/stages";
 import type { OpportunityDetail, StageKey } from "~/lib/types";
 import type { Route } from "./+types/opportunity-detail";
 
@@ -16,7 +17,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const api = await apiFor(request);
   const opportunity = await loadOrThrow(() => api.getOpportunity(Number(params.id)));
-  return { opportunity };
+  return { opportunity, today: todayISO() };
 }
 
 /**
@@ -47,6 +48,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export default function OpportunityDrawer({ loaderData }: Route.ComponentProps) {
   const o = loaderData.opportunity;
+  const overdue = isOverdue(o, loaderData.today);
 
   return (
     <Drawer
@@ -55,32 +57,26 @@ export default function OpportunityDrawer({ loaderData }: Route.ComponentProps) 
       footer={o.is_converted ? undefined : <DeleteOpportunity o={o} />}
     >
       <div className="drawer-body">
+        <div className="detail-hero">
+          <NameAvatar name={o.customer.name} />
+          <div>
+            <div className="detail-amount">{money(o.amount)}</div>
+            <div className="muted">{o.customer.name}</div>
+          </div>
+        </div>
+
+        <StageProgress o={o} />
+
         <dl>
-          <dt>Cliente</dt>
-          <dd>
-            {o.customer.name}
-            <br />
-            <span className="mono muted">{taxId(o.customer.document)}</span>
-          </dd>
-          <dt>Valor</dt>
-          <dd className="mono">{money(o.amount)}</dd>
+          <dt>CPF/CNPJ</dt>
+          <dd className="mono">{taxId(o.customer.document)}</dd>
           <dt>Responsável</dt>
           <dd>{o.owner.name}</dd>
           <dt>Previsão</dt>
-          <dd>{date(o.expected_close_date)}</dd>
-          <dt>Estágio</dt>
-          <dd>
-            <span className="pill">
-              <span className="dot" style={{ "--c": `var(--st-${o.stage})` } as React.CSSProperties} />
-              {o.stage_label}
-            </span>
+          <dd className={overdue ? "overdue" : undefined}>
+            {date(o.expected_close_date)}
+            {overdue && " · atrasada"}
           </dd>
-          {o.lost_reason && (
-            <>
-              <dt>Motivo da perda</dt>
-              <dd>{o.lost_reason}</dd>
-            </>
-          )}
         </dl>
 
         <MoveStage key={`${o.id}-${o.stage}`} o={o} />
@@ -108,6 +104,39 @@ export default function OpportunityDrawer({ loaderData }: Route.ComponentProps) 
         </section>
       </div>
     </Drawer>
+  );
+}
+
+const PROGRESS: StageKey[] = ["lead", "qualification", "proposal", "negotiation", "won"];
+
+/** Etapas do funil com a atual destacada. Perdida mostra o motivo no lugar do avanço. */
+function StageProgress({ o }: { o: OpportunityDetail }) {
+  if (o.stage === "lost") {
+    return (
+      <div className="lost-banner" role="status">
+        <strong>Oportunidade perdida</strong>
+        {o.lost_reason && <span>{o.lost_reason}</span>}
+      </div>
+    );
+  }
+  const current = PROGRESS.indexOf(o.stage);
+  // Em Ganho o funil está concluído: todas as etapas aparecem feitas.
+  const doneUntil = o.stage === "won" ? current + 1 : current;
+  return (
+    <ol className="stage-progress" aria-label={`Estágio atual: ${o.stage_label}`}>
+      {PROGRESS.map((stage, index) => (
+        <li
+          key={stage}
+          data-state={index < doneUntil ? "done" : index === current ? "current" : "todo"}
+          aria-current={index === current ? "step" : undefined}
+        >
+          <span className="step-dot" aria-hidden="true">
+            {index < doneUntil ? "✓" : index + 1}
+          </span>
+          <span className="step-label">{STAGE_LABEL[stage]}</span>
+        </li>
+      ))}
+    </ol>
   );
 }
 

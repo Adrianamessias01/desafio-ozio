@@ -50,6 +50,23 @@ export function initials(name: string) {
     .join("");
 }
 
+const isoDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE });
+
+/** Hoje no fuso de São Paulo, no formato da API ("2026-09-30"). */
+export function todayISO() {
+  return isoDateFmt.format(new Date());
+}
+
+/**
+ * Matiz (0–359) derivado do nome: o mesmo cliente tem sempre a mesma cor de avatar,
+ * no servidor e no navegador.
+ */
+export function hueFor(name: string) {
+  let hash = 0;
+  for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) % 360;
+  return hash;
+}
+
 /** Aceita "1.500,50", "1500,50" ou "1500.50" e devolve "1500.50". */
 export function parseAmount(input: string) {
   const value = input.trim().replace(/\s|R\$/g, "");

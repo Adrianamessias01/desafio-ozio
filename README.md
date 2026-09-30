@@ -12,6 +12,8 @@ convertem uma oportunidade ganha em um pedido no ERP.
 | ![Arrastando um card](docs/screenshots/kanban-arrastando.png) | ![Erro do ERP](docs/screenshots/erro-erp.png) |
 | **Oportunidade convertida (tema escuro)** | **Pedidos gerados no ERP** |
 | ![Convertida](docs/screenshots/convertida-tema-escuro.png) | ![Pedidos](docs/screenshots/pedidos.png) |
+| **Login por vendedor** | **Celular** |
+| ![Login](docs/screenshots/login.png) | ![Celular](docs/screenshots/celular.png) |
 
 ---
 
