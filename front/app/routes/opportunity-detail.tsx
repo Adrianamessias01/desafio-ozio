@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { isRouteErrorResponse, useFetcher } from "react-router";
+import { Link, isRouteErrorResponse, useFetcher } from "react-router";
 
 import { Drawer } from "~/components/drawer";
-import { api, loadOrThrow } from "~/lib/api.server";
+import { actionError, api, loadOrThrow } from "~/lib/api.server";
 import { date, dateTime, money, taxId } from "~/lib/format";
 import { STAGE_LABEL, allowedTargets, moveKey } from "~/lib/stages";
 import type { OpportunityDetail, StageKey } from "~/lib/types";
@@ -15,6 +15,16 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export async function loader({ params }: Route.LoaderArgs) {
   const opportunity = await loadOrThrow(() => api.getOpportunity(Number(params.id)));
   return { opportunity };
+}
+
+/** Conversão em pedido. Erros (ERP fora do ar, fora de Ganho) voltam como dado para a tela. */
+export async function action({ params }: Route.ActionArgs) {
+  try {
+    const result = await api.convert(Number(params.id));
+    return { ok: true as const, orderNumber: result.order_number, created: result.created };
+  } catch (error) {
+    return actionError(error);
+  }
 }
 
 export default function OpportunityDrawer({ loaderData }: Route.ComponentProps) {
@@ -124,22 +134,64 @@ function MoveStage({ o }: { o: OpportunityDetail }) {
 }
 
 function OrderStatus({ o }: { o: OpportunityDetail }) {
+  const fetcher = useFetcher<typeof action>({ key: `convert-${o.id}` });
+  const converting = fetcher.state !== "idle";
+  const result = fetcher.data;
+
   if (o.is_converted) {
     return (
       <div className="box">
-        <div className="alert alert-ok">
+        <div className="alert alert-ok" role="status">
           Convertida em {dateTime(o.converted_at)} no pedido{" "}
           <strong className="mono">{o.erp_order_number}</strong>.
         </div>
+        {result?.ok && !result.created && (
+          <p>O pedido já existia e foi devolvido. Nenhum pedido novo foi criado.</p>
+        )}
         <p>A oportunidade está congelada e não muda mais de estágio.</p>
+        <div className="row">
+          <Link to="/orders" className="btn">
+            Ver pedidos
+          </Link>
+          {/* Demonstra a idempotência: converter de novo devolve o mesmo pedido. */}
+          <fetcher.Form method="post" preventScrollReset>
+            <button type="submit" className="btn" disabled={converting}>
+              {converting ? "Consultando…" : "Converter novamente"}
+            </button>
+          </fetcher.Form>
+        </div>
       </div>
     );
   }
+
+  if (o.stage !== "won") {
+    return (
+      <div className="box">
+        <p>
+          A conversão em pedido fica disponível quando a oportunidade estiver em <strong>Ganho</strong>.
+        </p>
+      </div>
+    );
+  }
+
+  const failed = result && !result.ok ? result : null;
   return (
     <div className="box">
-      <p>
-        A conversão em pedido fica disponível quando a oportunidade estiver em <strong>Ganho</strong>.
-      </p>
+      <p>Gera um pedido no ERP com os dados do cliente e o valor da oportunidade.</p>
+      {failed && (
+        <div className="alert alert-error" role="alert">
+          {failed.error}
+        </div>
+      )}
+      <fetcher.Form method="post" preventScrollReset>
+        <button type="submit" className="btn btn-primary" disabled={converting}>
+          {converting
+            ? "Criando pedido…"
+            : failed?.code === "erp_unavailable"
+              ? "Tentar novamente"
+              : "Converter em pedido"}
+        </button>
+      </fetcher.Form>
     </div>
   );
 }
