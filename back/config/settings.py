@@ -110,11 +110,12 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# O front-end (SSR) autentica com token: o servidor do React Router envia o
-# token no header Authorization, e o navegador nunca fala direto com a API.
-# Sem tela de login nesta versão: o front usa o token do vendedor padrão,
-# criado pelo comando `seed` com o valor de API_TOKEN.
-API_TOKEN = os.environ.get("API_TOKEN", "")
+# O front-end (SSR) autentica com token: faz login em /api/auth/login/, guarda o
+# token em cookie httpOnly e o envia no header Authorization. O navegador nunca
+# fala direto com a API.
+
+# Senha dos vendedores de exemplo criados pelo comando `seed` (só desenvolvimento).
+SEED_PASSWORD = os.environ.get("SEED_PASSWORD", "ozio1234")
 
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",

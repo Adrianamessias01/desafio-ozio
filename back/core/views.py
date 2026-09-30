@@ -4,6 +4,8 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from core.auth_views import user_summary
+
 
 @api_view(["GET"])
 @authentication_classes([])
@@ -24,7 +26,4 @@ def health(request):
 @api_view(["GET"])
 def me(request):
     """Usuário dono do token; o front-end usa para mostrar quem está operando."""
-    user = request.user
-    return Response(
-        {"id": user.id, "username": user.username, "name": user.get_full_name() or user.username}
-    )
+    return Response(user_summary(request.user))

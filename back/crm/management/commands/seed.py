@@ -4,6 +4,8 @@ Dados de exemplo para desenvolvimento e demonstração.
 Pode ser executado várias vezes: usuários e clientes são reaproveitados, e as
 oportunidades só são criadas se o pipeline estiver vazio. As movimentações
 passam pela camada de serviço, então respeitam as mesmas regras da API.
+
+Os vendedores entram no sistema com a senha de SEED_PASSWORD (padrão "ozio1234").
 """
 
 from datetime import date
@@ -13,7 +15,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from rest_framework.authtoken.models import Token
 
 from crm import services
 from crm.models import Customer, Opportunity
@@ -25,7 +26,6 @@ SELLERS = [
     ("rafael", "Rafael", "Lima"),
     ("marina", "Marina", "Freitas"),
 ]
-DEFAULT_SELLER = "carla"
 
 CUSTOMERS = [
     ("Metalúrgica Vale do Aço Ltda.", "12345678000190", "compras@valedoaco.com.br"),
@@ -70,7 +70,6 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **options):
         users = self._sellers()
-        self._token(users[DEFAULT_SELLER])
         customers = self._customers()
 
         if Opportunity.objects.exists():
@@ -110,25 +109,17 @@ class Command(BaseCommand):
         User = get_user_model()
         users = {}
         for username, first_name, last_name in SELLERS:
-            user, created = User.objects.get_or_create(
+            user, _ = User.objects.get_or_create(
                 username=username, defaults={"first_name": first_name, "last_name": last_name}
             )
-            if created:
-                user.set_unusable_password()
+            # Só define a senha se ainda não houver uma: não sobrescreve senhas trocadas.
+            if not user.has_usable_password():
+                user.set_password(settings.SEED_PASSWORD)
                 user.save(update_fields=["password"])
             users[username] = user
+        names = ", ".join(users)
+        self.stdout.write(f"Vendedores de exemplo: {names} (senha definida por SEED_PASSWORD).")
         return users
-
-    def _token(self, user):
-        key = settings.API_TOKEN
-        if key:
-            Token.objects.filter(user=user).exclude(key=key).delete()
-            Token.objects.filter(key=key).exclude(user=user).delete()
-            Token.objects.get_or_create(user=user, key=key)
-            self.stdout.write(f"Token de API do vendedor padrão ({user.username}) configurado.")
-        else:
-            token, _ = Token.objects.get_or_create(user=user)
-            self.stdout.write(f"Token de API do vendedor padrão ({user.username}): {token.key}")
 
     def _customers(self):
         customers = {}

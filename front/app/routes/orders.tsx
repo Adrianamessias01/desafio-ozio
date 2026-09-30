@@ -2,7 +2,7 @@ import { ReceiptIcon, WalletIcon } from "~/components/icons";
 import { PageError } from "~/components/page-error";
 import { Stat } from "~/components/stat";
 import { SortHeader, readSort } from "~/components/sort-header";
-import { api, loadOrThrow } from "~/lib/api.server";
+import { apiFor, loadOrThrow } from "~/lib/api.server";
 import { dateTime, money, taxId } from "~/lib/format";
 import type { Route } from "./+types/orders";
 
@@ -13,6 +13,7 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
+  const api = await apiFor(request);
   const sort = readSort(new URL(request.url), SORTABLE, { sort: "created_at", dir: "desc" });
   const ordering = `${sort.dir === "desc" ? "-" : ""}${sort.sort}`;
   const orders = await loadOrThrow(() => api.listOrders(ordering));

@@ -1,5 +1,6 @@
-import { data } from "react-router";
+import { data, redirect } from "react-router";
 
+import { getToken, redirectToLogin } from "./session.server";
 import type {
   ConversionResult,
   Customer,
@@ -11,9 +12,8 @@ import type {
   UserSummary,
 } from "./types";
 
-// Só roda no servidor (sufixo .server): o token nunca chega ao navegador.
+// Só roda no servidor (sufixo .server): o token do usuário nunca chega ao navegador.
 const BASE_URL = (process.env.API_BASE_URL ?? "http://localhost:8000/api").replace(/\/$/, "");
-const TOKEN = process.env.API_TOKEN ?? "";
 
 export interface PipelineFilters {
   search?: string;
@@ -33,14 +33,18 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+async function request<T>(
+  token: string | null,
+  path: string,
+  init: { method?: string; body?: unknown } = {},
+): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}${path}`, {
       method: init.method ?? "GET",
       headers: {
         Accept: "application/json",
-        ...(TOKEN ? { Authorization: `Token ${TOKEN}` } : {}),
+        ...(token ? { Authorization: `Token ${token}` } : {}),
         ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
       },
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
@@ -53,11 +57,13 @@ async function request<T>(path: string, init: { method?: string; body?: unknown 
     );
   }
 
+  // Token revogado ou expirado: encerra a sessão e volta para o login.
+  if (response.status === 401 && token) throw redirect("/logout?expired=1");
+
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw toApiError(response.status, payload);
   return payload as T;
 }
-
 function toApiError(status: number, payload: unknown): ApiError {
   if (payload && typeof payload === "object") {
     const body = payload as Record<string, unknown>;
@@ -102,53 +108,80 @@ export function actionError<Extra extends object = {}>(error: unknown, extra?: E
   );
 }
 
-export const api = {
-  me: () => request<UserSummary>("/me/"),
+/** Login: troca usuário e senha pelo token da API. */
+export function login(username: string, password: string) {
+  return request<{ token: string; user: UserSummary }>(null, "/auth/login/", {
+    method: "POST",
+    body: { username, password },
+  });
+}
 
-  /** Filtros opcionais: texto (título ou cliente), vendedor e período da previsão de fechamento. */
-  listOpportunities: (filters: PipelineFilters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.search) params.set("search", filters.search);
-    if (filters.owner) params.set("owner", filters.owner);
-    if (filters.closeFrom) params.set("close_from", filters.closeFrom);
-    if (filters.closeTo) params.set("close_to", filters.closeTo);
-    const query = params.toString();
-    return request<Opportunity[]>(`/opportunities/${query ? `?${query}` : ""}`);
-  },
+/** Revoga o token na API. Falhas são ignoradas: a sessão local é apagada de qualquer jeito. */
+export async function logout(token: string) {
+  await request<null>(token, "/auth/logout/", { method: "POST" }).catch(() => undefined);
+}
 
-  sellers: () => request<UserSummary[]>("/sellers/"),
+/**
+ * Cliente da API com o token do usuário logado. Sem sessão, redireciona para o login.
+ * Use em todo loader e action que fale com a API.
+ */
+export async function apiFor(request: Request) {
+  const token = await getToken(request);
+  if (!token) redirectToLogin(request);
+  return createApi(token);
+}
 
-  erpStatus: () => request<{ available: boolean }>("/erp/status/"),
+export type Api = ReturnType<typeof createApi>;
 
-  getOpportunity: (id: number) => request<OpportunityDetail>(`/opportunities/${id}/`),
+function createApi(token: string) {
+  return {
+    me: () => request<UserSummary>(token, "/me/"),
 
-  createOpportunity: (body: {
-    title: string;
-    customer_id: number;
-    amount: string;
-    expected_close_date: string | null;
-  }) => request<Opportunity>("/opportunities/", { method: "POST", body }),
+    /** Filtros opcionais: texto (título ou cliente), vendedor e período da previsão de fechamento. */
+    listOpportunities: (filters: PipelineFilters = {}) => {
+      const params = new URLSearchParams();
+      if (filters.search) params.set("search", filters.search);
+      if (filters.owner) params.set("owner", filters.owner);
+      if (filters.closeFrom) params.set("close_from", filters.closeFrom);
+      if (filters.closeTo) params.set("close_to", filters.closeTo);
+      const query = params.toString();
+      return request<Opportunity[]>(token, `/opportunities/${query ? `?${query}` : ""}`);
+    },
 
-  moveStage: (id: number, stage: StageKey, lostReason = "") =>
-    request<OpportunityDetail>(`/opportunities/${id}/stage/`, {
-      method: "PATCH",
-      body: { stage, lost_reason: lostReason },
-    }),
+    sellers: () => request<UserSummary[]>(token, "/sellers/"),
 
-  deleteOpportunity: (id: number) =>
-    request<null>(`/opportunities/${id}/`, { method: "DELETE" }),
+    erpStatus: () => request<{ available: boolean }>(token, "/erp/status/"),
 
-  convert: (id: number) =>
-    request<ConversionResult>(`/opportunities/${id}/convert/`, { method: "POST" }),
+    getOpportunity: (id: number) => request<OpportunityDetail>(token, `/opportunities/${id}/`),
 
-  /** `ordering`: campo da API, com "-" na frente para decrescente (ex.: "-open_amount"). */
-  listCustomers: (ordering = "name") =>
-    request<CustomerSummary[]>(`/customers/?ordering=${encodeURIComponent(ordering)}`),
+    createOpportunity: (body: {
+      title: string;
+      customer_id: number;
+      amount: string;
+      expected_close_date: string | null;
+    }) => request<Opportunity>(token, "/opportunities/", { method: "POST", body }),
 
-  createCustomer: (body: { name: string; document: string; email: string; phone: string }) =>
-    request<Customer>("/customers/", { method: "POST", body }),
+    moveStage: (id: number, stage: StageKey, lostReason = "") =>
+      request<OpportunityDetail>(token, `/opportunities/${id}/stage/`, {
+        method: "PATCH",
+        body: { stage, lost_reason: lostReason },
+      }),
 
-  /** `ordering`: campo da API, com "-" na frente para decrescente (ex.: "-created_at"). */
-  listOrders: (ordering = "-created_at") =>
-    request<Order[]>(`/orders/?ordering=${encodeURIComponent(ordering)}`),
-};
+    deleteOpportunity: (id: number) =>
+      request<null>(token, `/opportunities/${id}/`, { method: "DELETE" }),
+
+    convert: (id: number) =>
+      request<ConversionResult>(token, `/opportunities/${id}/convert/`, { method: "POST" }),
+
+    /** `ordering`: campo da API, com "-" na frente para decrescente (ex.: "-open_amount"). */
+    listCustomers: (ordering = "name") =>
+      request<CustomerSummary[]>(token, `/customers/?ordering=${encodeURIComponent(ordering)}`),
+
+    createCustomer: (body: { name: string; document: string; email: string; phone: string }) =>
+      request<Customer>(token, "/customers/", { method: "POST", body }),
+
+    /** `ordering`: campo da API, com "-" na frente para decrescente (ex.: "-created_at"). */
+    listOrders: (ordering = "-created_at") =>
+      request<Order[]>(token, `/orders/?ordering=${encodeURIComponent(ordering)}`),
+  };
+}

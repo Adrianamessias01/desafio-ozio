@@ -1,6 +1,9 @@
 import { type RouteConfig, layout, route } from "@react-router/dev/routes";
 
 export default [
+  route("login", "routes/login.tsx"),
+  route("logout", "routes/logout.tsx"),
+  // Área interna: o layout exige sessão e redireciona para /login sem ela.
   layout("routes/shell.tsx", [
     // Cadastro e detalhe abrem como gaveta sobre o kanban, com URL própria.
     route("/", "routes/pipeline.tsx", [

@@ -3,7 +3,7 @@ import { Link, isRouteErrorResponse, redirect, useFetcher } from "react-router";
 
 import { ConfirmDialog } from "~/components/confirm-dialog";
 import { Drawer } from "~/components/drawer";
-import { actionError, api, loadOrThrow } from "~/lib/api.server";
+import { actionError, apiFor, loadOrThrow } from "~/lib/api.server";
 import { date, dateTime, money, taxId } from "~/lib/format";
 import { STAGE_LABEL, allowedTargets, moveKey } from "~/lib/stages";
 import type { OpportunityDetail, StageKey } from "~/lib/types";
@@ -13,7 +13,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `${loaderData?.opportunity.title ?? "Oportunidade"} · Pipeline Comercial` }];
 }
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const api = await apiFor(request);
   const opportunity = await loadOrThrow(() => api.getOpportunity(Number(params.id)));
   return { opportunity };
 }
@@ -23,6 +24,7 @@ export async function loader({ params }: Route.LoaderArgs) {
  * voltam como dado para a tela.
  */
 export async function action({ request, params }: Route.ActionArgs) {
+  const api = await apiFor(request);
   const form = await request.formData();
   const id = Number(params.id);
 

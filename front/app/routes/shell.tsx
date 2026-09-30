@@ -1,19 +1,90 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Form, Link, NavLink, Outlet, useLocation, useNavigation, useSearchParams } from "react-router";
 
-import { BoardIcon, BuildingIcon, ReceiptIcon, SearchIcon, TrendIcon } from "~/components/icons";
-import { api } from "~/lib/api.server";
+import {
+  BoardIcon,
+  BuildingIcon,
+  ChevronIcon,
+  LogoutIcon,
+  ReceiptIcon,
+  SearchIcon,
+  TrendIcon,
+} from "~/components/icons";
+import { apiFor } from "~/lib/api.server";
 import { initials } from "~/lib/format";
 import type { Route } from "./+types/shell";
 
-export async function loader() {
-  // O nome na barra superior é opcional: se a API falhar, as páginas mostram o erro.
-  const me = await api.me().catch(() => null);
+export async function loader({ request }: Route.LoaderArgs) {
+  // Sem sessão, apiFor redireciona para o login: toda a área interna passa por aqui.
+  const api = await apiFor(request);
+  // Se a API estiver fora, as páginas mostram o erro; o menu só fica sem o nome.
+  const me = await api.me().catch((error) => {
+    if (error instanceof Response) throw error; // redirecionamento (sessão expirada)
+    return null;
+  });
   return { me };
 }
 
+// O usuário não muda durante a sessão; trocar de conta passa por /login e remonta o layout.
 export function shouldRevalidate() {
   return false;
+}
+
+/** Avatar com menu: mostra quem está logado e o botão Sair. */
+function UserMenu({ name, username }: { name: string | null; username: string | null }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="user-menu" ref={ref}>
+      <button
+        type="button"
+        className="topbar-user"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span className="avatar" aria-hidden="true">
+          {name ? initials(name) : "?"}
+        </span>
+        <span className="topbar-user-text">
+          {name ?? "Minha conta"}
+          <small>Vendedor(a)</small>
+        </span>
+        <ChevronIcon />
+      </button>
+      {open && (
+        <div className="user-dropdown" role="menu">
+          {username && (
+            <div className="user-dropdown-head">
+              <strong>{name}</strong>
+              <span>@{username}</span>
+            </div>
+          )}
+          <Form method="post" action="/logout">
+            <button type="submit" role="menuitem" className="user-dropdown-item">
+              <LogoutIcon />
+              Sair
+            </button>
+          </Form>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Shell({ loaderData }: Route.ComponentProps) {
@@ -86,17 +157,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
               defaultValue={onPipeline ? (params.get("q") ?? "") : ""}
             />
           </Form>
-          {me && (
-            <div className="topbar-user">
-              <span className="avatar" aria-hidden="true">
-                {initials(me.name)}
-              </span>
-              <div>
-                {me.name}
-                <small>Vendedor(a)</small>
-              </div>
-            </div>
-          )}
+          <UserMenu name={me?.name ?? null} username={me?.username ?? null} />
         </header>
         <main>
           <Outlet />

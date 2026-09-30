@@ -25,7 +25,7 @@ import {
 import { LostReasonDialog } from "~/components/lost-reason-dialog";
 import { PageError } from "~/components/page-error";
 import { useToast } from "~/components/toast";
-import { ApiError, actionError, api, loadOrThrow } from "~/lib/api.server";
+import { ApiError, actionError, apiFor, loadOrThrow } from "~/lib/api.server";
 import { date, initials, money } from "~/lib/format";
 import { STAGES, blockReason, canMove, isStage, moveKey } from "~/lib/stages";
 import type { Opportunity, StageKey } from "~/lib/types";
@@ -36,6 +36,7 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
+  const api = await apiFor(request);
   const params = new URL(request.url).searchParams;
   const filters = {
     search: params.get("q")?.trim() ?? "",
@@ -54,6 +55,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 /** Movimentação de estágio vinda do kanban (e da gaveta de detalhe). */
 export async function action({ request }: Route.ActionArgs) {
+  const api = await apiFor(request);
   const form = await request.formData();
   const id = Number(form.get("id"));
   const stage = form.get("stage");

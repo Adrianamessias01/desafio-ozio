@@ -2,7 +2,7 @@ import { Form, Link, redirect, useNavigation } from "react-router";
 
 import { Drawer } from "~/components/drawer";
 import { Field } from "~/components/field";
-import { actionError, api, loadOrThrow } from "~/lib/api.server";
+import { actionError, apiFor, loadOrThrow } from "~/lib/api.server";
 import { parseAmount } from "~/lib/format";
 import type { Route } from "./+types/opportunity-new";
 
@@ -11,6 +11,7 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
+  const api = await apiFor(request);
   const customers = await loadOrThrow(() => api.listCustomers());
   // ?customer=<id> vem do cadastro de cliente feito a partir deste formulário.
   const selectedCustomer = new URL(request.url).searchParams.get("customer") ?? "";
@@ -18,6 +19,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
+  const api = await apiFor(request);
   const form = await request.formData();
   const values = {
     title: String(form.get("title") ?? "").trim(),

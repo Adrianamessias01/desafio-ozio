@@ -2,7 +2,7 @@ import { Form, redirect, useLocation, useNavigation, useSearchParams } from "rea
 
 import { Drawer } from "~/components/drawer";
 import { Field } from "~/components/field";
-import { actionError, api } from "~/lib/api.server";
+import { actionError, apiFor } from "~/lib/api.server";
 import type { Route } from "./+types/customer-new";
 
 export function meta() {
@@ -11,6 +11,7 @@ export function meta() {
 
 // Vindo do cadastro de oportunidade (?next=opportunity), volta para ele com o cliente escolhido.
 export async function action({ request }: Route.ActionArgs) {
+  const api = await apiFor(request);
   const form = await request.formData();
   const values = {
     name: String(form.get("name") ?? "").trim(),

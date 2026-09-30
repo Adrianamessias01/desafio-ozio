@@ -87,7 +87,7 @@ Cobertura prioritária:
 | `DEBUG`         | `True` em desenvolvimento                   |
 | `ALLOWED_HOSTS` | Hosts aceitos, separados por vírgula        |
 | `DATABASE_URL`  | String de conexão do PostgreSQL             |
-| `API_TOKEN`     | Token do vendedor padrão, usado pelo front-end; o `seed` o registra |
+| `SEED_PASSWORD` | Senha dos vendedores de exemplo criados pelo `seed` (padrão `ozio1234`) |
 | `ERP_GATEWAY`   | Implementação do ERP (padrão: `erp.services.LocalErpGateway`) |
 | `ERP_SIMULATE_FAILURE` | `True` faz o ERP simulado responder como indisponível |
 

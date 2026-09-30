@@ -134,10 +134,12 @@ Depois de convertida, a oportunidade fica congelada: não muda de estágio nem �
 | `GET`   | `/api/orders/{id}/`                 | Detalha um pedido com seus itens   |
 | `GET`   | `/api/sellers/`                     | Vendedores, para o filtro do kanban |
 | `GET`   | `/api/erp/status/`                  | Se o ERP está disponível           |
+| `POST`  | `/api/auth/login/`                  | Troca usuário e senha por um token (pública) |
+| `POST`  | `/api/auth/logout/`                 | Revoga o token                     |
 | `GET`   | `/api/me/`                          | Usuário dono do token              |
 | `GET`   | `/api/health/`                      | Verificação de saúde (pública)     |
 
-Todas as rotas, exceto `/api/health/`, exigem o header `Authorization: Token <token>`.
+Todas as rotas, exceto login e `/api/health/`, exigem o header `Authorization: Token <token>`.
 Filtros da listagem de oportunidades: `?stage=`, `?customer=`, `?owner=`, `?search=` e
 `?close_from=`/`?close_to=` (AAAA-MM-DD, sobre a previsão de fechamento). A listagem de
 clientes aceita `?ordering=` com `name`, `document`, `open_count`, `won_count` ou
@@ -157,14 +159,17 @@ Erros de regra de negócio seguem o formato do DRF, com um código estável para
 | `lost_reason_required`     | 400  | Ida para Perdido sem motivo                        |
 | `opportunity_not_won`      | 409  | Conversão de oportunidade fora de Ganho            |
 | `erp_unavailable`          | 503  | ERP fora do ar durante a conversão                 |
+| `invalid_credentials`      | 400  | Login com usuário ou senha incorretos              |
 
-### Autenticação sem tela de login
+### Autenticação
 
-Esta versão não tem login: o foco do desafio é o pipeline e a conversão. A API continua
-protegida por token, e o front-end (SSR) usa o token do vendedor padrão, criado pelo comando
-`seed` a partir da variável `API_TOKEN`. O navegador nunca recebe o token, porque só o
-servidor do React Router conversa com a API. Adicionar login depois não muda o back-end:
-basta o front obter o token do usuário em vez de usar o fixo.
+Cada vendedor entra com a própria conta. O servidor do front-end (SSR) chama
+`/api/auth/login/`, recebe o token e o guarda num cookie `httpOnly` assinado: o JavaScript
+do navegador não lê o token e só o servidor do React Router o envia para a API. As
+oportunidades novas ficam no nome de quem está logado.
+
+"Sair" revoga o token na API e apaga o cookie. Se a API recusar o token (revogado ou
+inexistente), o usuário volta para o login com o aviso de sessão encerrada.
 
 ---
 
@@ -181,16 +186,25 @@ docker compose up --build
 A aplicação abre em **`http://localhost:3000`**. A API sobe em `http://localhost:8000/api/`
 (verificação: `GET /api/health/`) e o admin em `http://localhost:8000/admin/`. Na subida, o
 compose aplica as migrations e roda o `seed`, que cria vendedores, clientes e oportunidades
-de exemplo. Para chamar a API direto:
+de exemplo.
+
+**Contas de demonstração:** `carla`, `rafael` ou `marina`, todas com a senha `ozio1234`.
+
+Para chamar a API direto, obtenha um token e use no header:
 
 ```bash
-curl -H "Authorization: Token dev-only-api-token" http://localhost:8000/api/opportunities/
+curl -X POST http://localhost:8000/api/auth/login/ \
+  -H "Content-Type: application/json" -d '{"username": "carla", "password": "ozio1234"}'
+
+curl -H "Authorization: Token <token>" http://localhost:8000/api/opportunities/
 ```
 
 Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.md`](front/README.md).
 
 ### Roteiro para avaliar
 
+0. **Login:** entre como `carla` / `ozio1234`. O menu no avatar (canto superior direito)
+   tem a opção **Sair**.
 1. **Arrastar e soltar:** leve "Renovação de licenças 2027" de Lead para Qualificação. O card
    muda na hora (atualização otimista) e a mudança fica registrada no histórico.
 2. **Regra de transição:** tente levar um card de Proposta direto para Ganho. A coluna aparece
@@ -229,7 +243,8 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 - **Erros com código estável** (`{"detail", "code"}`), para o front decidir o que mostrar sem
   depender do texto da mensagem.
 - **SSR com o token só no servidor.** O navegador fala apenas com o servidor do React Router,
-  que chama a API. Assim o token não vaza e a primeira resposta já chega com o kanban pronto.
+  que guarda o token do usuário em cookie `httpOnly` e chama a API. Assim o token não vaza e
+  a primeira resposta já chega com o kanban pronto.
 - **Atualização otimista derivada do estado do fetcher**, sem cópia local dos dados: se a API
   recusar a movimentação, o card volta sozinho para a coluna de origem.
 - **Exclusão só para engano.** Negócio encerrado vai para Perdido e mantém o histórico;
@@ -243,7 +258,7 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
 ## Testes
 
 ```bash
-docker compose exec api python manage.py test    # 80 testes do back-end
+docker compose exec api python manage.py test    # 86 testes do back-end
 docker compose exec api ruff check .             # lint
 docker compose exec web npm run typecheck        # tipos do front-end
 ```

@@ -25,7 +25,7 @@ services:
       SECRET_KEY: dev-only-insecure-key
       ALLOWED_HOSTS: localhost,127.0.0.1,api
       DATABASE_URL: postgres://ozio:ozio@db:5432/ozio
-      API_TOKEN: dev-only-api-token
+      SEED_PASSWORD: ozio1234
       ERP_SIMULATE_FAILURE: ${ERP_SIMULATE_FAILURE:-False}
     command: >
       sh -c "python manage.py migrate --noinput &&
@@ -46,7 +46,7 @@ services:
     environment:
       # O servidor SSR fala com a API pela rede interna do compose.
       API_BASE_URL: http://api:8000/api
-      API_TOKEN: dev-only-api-token
+      SESSION_SECRET: dev-only-session-secret
       WATCH_POLLING: "true"
     ports:
       - "3000:3000"

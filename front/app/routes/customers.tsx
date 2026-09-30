@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation } from "react-router";
 
 import { PageError } from "~/components/page-error";
 import { SortHeader, readSort } from "~/components/sort-header";
-import { api, loadOrThrow } from "~/lib/api.server";
+import { apiFor, loadOrThrow } from "~/lib/api.server";
 import { money, taxId } from "~/lib/format";
 import type { Route } from "./+types/customers";
 
@@ -13,6 +13,7 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
+  const api = await apiFor(request);
   const sort = readSort(new URL(request.url), SORTABLE, { sort: "name", dir: "asc" });
   const ordering = `${sort.dir === "desc" ? "-" : ""}${sort.sort}`;
   const customers = await loadOrThrow(() => api.listCustomers(ordering));

@@ -28,8 +28,12 @@ oportunidade, converter em pedido) passam por `action`.
 Erros de carregamento aparecem dentro da página, mantendo o menu lateral. Erros de ação
 (regra de transição, ERP fora do ar) aparecem como aviso ou na própria gaveta.
 
-Só o servidor do React Router conversa com a API. O token fica em `API_TOKEN`, no servidor,
-e nunca é enviado ao navegador.
+Só o servidor do React Router conversa com a API. No login (`/login`), ele troca usuário e
+senha pelo token e o guarda num cookie `httpOnly` assinado com `SESSION_SECRET`
+(`app/lib/session.server.ts`). Todo loader e action obtém o cliente da API com
+`apiFor(request)`, que lê o token da sessão e manda para o login quando não há sessão.
+Se a API recusar o token, `/logout` limpa o cookie e o login mostra o aviso de sessão
+encerrada. O menu do avatar tem a opção "Sair", que revoga o token na API.
 
 ### Arrastar e soltar
 
@@ -54,7 +58,7 @@ Sem Docker (Node 20+ e a API rodando em `localhost:8000`):
 ```bash
 npm install
 
-cp .env.example .env           # aponte para a API e informe o token
+cp .env.example .env           # aponte para a API e defina SESSION_SECRET
 
 npm run dev
 ```
@@ -79,13 +83,14 @@ npm run typecheck
 | Variável        | Descrição                                                        |
 | --------------- | ---------------------------------------------------------------- |
 | `API_BASE_URL`  | URL base da API (ex.: `http://localhost:8000/api`)               |
-| `API_TOKEN`     | Token do vendedor padrão, o mesmo `API_TOKEN` do back-end        |
+| `SESSION_SECRET` | Chave que assina o cookie de sessão; obrigatória em produção    |
 | `WATCH_POLLING` | `true` para o recarregamento automático funcionar em volume Docker no Windows |
 
 ## Telas
 
 | Rota                 | Descrição                                          |
 | -------------------- | -------------------------------------------------- |
+| `/login`             | Entrada com usuário e senha (`?next=` volta para a página pedida) |
 | `/`                  | Kanban do pipeline, com arrastar e soltar. Busca da barra superior (`?q=`), filtro por vendedor (`?owner=`) e por período da previsão de fechamento (`?from=`/`?to=`), todos na URL. Abaixo do quadro, o status do ERP |
 | `/opportunities/new` | Cadastro de oportunidade (gaveta sobre o kanban)   |
 | `/opportunities/:id` | Detalhe, mudança de estágio, conversão e exclusão  |
