@@ -7,6 +7,7 @@ testes e produção.
 """
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -151,10 +152,26 @@ SPECTACULAR_SETTINGS = {
 }
 
 
-# Implementação do ERP usada pelo CRM (ver erp/services.py). ERP_SIMULATE_FAILURE
-# faz o ERP simulado responder como indisponível, para demonstrar o tratamento de erro.
+# ---------- ERP (ver erp/services.py e erp/api_views.py) ----------
+# Lado CRM: qual implementação usar. No docker-compose é o cliente HTTP do serviço ERP;
+# o padrão local (sem HTTP) atende os testes e a execução sem Docker.
 ERP_GATEWAY = os.environ.get("ERP_GATEWAY", "erp.services.LocalErpGateway")
+ERP_BASE_URL = os.environ.get("ERP_BASE_URL", "http://localhost:8001/erp-api")
+ERP_API_KEY = os.environ.get("ERP_API_KEY", "")
+ERP_TIMEOUT = float(os.environ.get("ERP_TIMEOUT", "5"))
+ERP_RETRIES = int(os.environ.get("ERP_RETRIES", "2"))
+
+# Lado ERP: o container do ERP liga a própria API e pode simular problemas.
+ERP_SERVE_API = env_bool("ERP_SERVE_API")
 ERP_SIMULATE_FAILURE = env_bool("ERP_SIMULATE_FAILURE")
+ERP_SIMULATE_LATENCY_MS = int(os.environ.get("ERP_SIMULATE_LATENCY_MS", "0"))
+
+# Testes sempre com o ERP local e sem simulações, mesmo rodando dentro de um container
+# configurado para HTTP. O cliente HTTP tem testes próprios (erp/tests/test_http.py).
+if sys.argv[1:2] == ["test"]:
+    ERP_GATEWAY = "erp.services.LocalErpGateway"
+    ERP_SERVE_API = ERP_SIMULATE_FAILURE = False
+    ERP_SIMULATE_LATENCY_MS = 0
 
 
 # Produção (DEBUG desligado): cookies só por HTTPS e cabeçalhos de segurança.

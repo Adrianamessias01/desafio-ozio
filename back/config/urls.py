@@ -15,4 +15,6 @@ urlpatterns = [
     path("api/me/", me, name="me"),
     path("api/", include("crm.urls")),
     path("api/", include("erp.urls")),
+    # API do serviço ERP; só responde no container do ERP (ERP_SERVE_API=True).
+    path("erp-api/", include("erp.api_urls")),
 ]

@@ -15,6 +15,31 @@ services:
       timeout: 5s
       retries: 10
 
+  # ERP: serviço à parte, com API HTTP própria. O CRM (api) só fala com ele por HTTP.
+  # Para simular o ERP fora do ar: `docker compose stop erp` (ou ERP_SIMULATE_FAILURE=True).
+  erp:
+    build:
+      context: ./back
+      args:
+        INSTALL_DEV: "true"
+    environment:
+      DEBUG: "True"
+      SECRET_KEY: dev-only-insecure-key
+      ALLOWED_HOSTS: localhost,127.0.0.1,erp
+      DATABASE_URL: postgres://ozio:ozio@db:5432/ozio
+      ERP_SERVE_API: "True"
+      ERP_API_KEY: dev-only-erp-key
+      ERP_SIMULATE_FAILURE: ${ERP_SIMULATE_FAILURE:-False}
+      ERP_SIMULATE_LATENCY_MS: ${ERP_SIMULATE_LATENCY_MS:-400}
+    command: python manage.py runserver 0.0.0.0:8001
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./back:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
   api:
     build:
       context: ./back
@@ -26,7 +51,12 @@ services:
       ALLOWED_HOSTS: localhost,127.0.0.1,api
       DATABASE_URL: postgres://ozio:ozio@db:5432/ozio
       SEED_PASSWORD: ozio1234
-      ERP_SIMULATE_FAILURE: ${ERP_SIMULATE_FAILURE:-False}
+      ERP_GATEWAY: erp.services.HttpErpGateway
+      ERP_BASE_URL: http://erp:8001/erp-api
+      ERP_API_KEY: dev-only-erp-key
+      # Com o container do ERP parado, cada tentativa espera o DNS do Docker falhar (~3 s).
+      ERP_TIMEOUT: "3"
+      ERP_RETRIES: "1"
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py seed &&
@@ -38,6 +68,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      erp:
+        condition: service_started
 
   web:
     build:
