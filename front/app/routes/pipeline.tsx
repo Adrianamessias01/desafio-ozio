@@ -13,10 +13,19 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
-import { Link, Outlet, useFetcher, useFetchers, useSubmit } from "react-router";
+import { Link, Outlet, useFetcher, useFetchers, useLocation, useSubmit } from "react-router";
 
+import {
+  BuildingIcon,
+  CalendarIcon,
+  ClockIcon,
+  ReceiptIcon,
+  TrophyIcon,
+  WalletIcon,
+} from "~/components/icons";
 import { LostReasonDialog } from "~/components/lost-reason-dialog";
 import { PageError } from "~/components/page-error";
+import { Stat } from "~/components/stat";
 import { useToast } from "~/components/toast";
 import { ApiError, actionError, api, loadOrThrow } from "~/lib/api.server";
 import { date, initials, money, moneyShort } from "~/lib/format";
@@ -28,9 +37,10 @@ export function meta() {
   return [{ title: "Pipeline · Pipeline Comercial" }];
 }
 
-export async function loader() {
-  const opportunities = await loadOrThrow(() => api.listOpportunities());
-  return { opportunities };
+export async function loader({ request }: Route.LoaderArgs) {
+  const search = new URL(request.url).searchParams.get("q")?.trim() ?? "";
+  const opportunities = await loadOrThrow(() => api.listOpportunities(search));
+  return { opportunities, search };
 }
 
 /** Movimentação de estágio vinda do kanban (e da gaveta de detalhe). */
@@ -50,6 +60,8 @@ export async function action({ request }: Route.ActionArgs) {
 export default function Pipeline({ loaderData }: Route.ComponentProps) {
   const toast = useToast();
   const submit = useSubmit();
+  // A busca (?q=) acompanha a abertura das gavetas, para o kanban não perder o filtro.
+  const { search } = useLocation();
   const fetchers = useFetchers();
   const [activeId, setActiveId] = useState<number | null>(null);
   const [overStage, setOverStage] = useState<StageKey | null>(null);
@@ -121,19 +133,38 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
     <>
       <div className="page-head">
         <div>
-          <h1>Pipeline</h1>
+          <h1>Pipeline de oportunidades</h1>
           <p className="sub">Arraste os cards entre as colunas para mudar o estágio.</p>
         </div>
-        <Link to="/opportunities/new" preventScrollReset className="btn btn-primary">
+        <Link to={`/opportunities/new${search}`} preventScrollReset className="btn btn-primary">
           + Nova oportunidade
         </Link>
       </div>
 
+      {loaderData.search && (
+        <p className="search-note" role="status">
+          {opportunities.length} resultado(s) para “{loaderData.search}”.
+          <Link to="/" className="btn">
+            Limpar busca
+          </Link>
+        </p>
+      )}
+
       <div className="stats">
-        <Stat label="Em aberto" value={money(sum(open))} />
-        <Stat label="Ganho" value={money(sum(won))} />
-        <Stat label="Aguardando pedido" value={String(won.filter((o) => !o.is_converted).length)} />
-        <Stat label="Convertidas em pedido" value={String(won.filter((o) => o.is_converted).length)} />
+        <Stat label="Em aberto" value={money(sum(open))} icon={<WalletIcon />} tone="var(--accent)" />
+        <Stat label="Ganho" value={money(sum(won))} icon={<TrophyIcon />} tone="var(--st-won)" />
+        <Stat
+          label="Aguardando pedido"
+          value={String(won.filter((o) => !o.is_converted).length)}
+          icon={<ClockIcon />}
+          tone="var(--st-negotiation)"
+        />
+        <Stat
+          label="Pedidos no ERP"
+          value={String(won.filter((o) => o.is_converted).length)}
+          icon={<ReceiptIcon />}
+          tone="var(--st-proposal)"
+        />
       </div>
 
       <DndContext
@@ -157,6 +188,7 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
                 active={active}
                 isOver={overStage === stage.key}
                 pending={pendingStage}
+                search={search}
                 onCardClick={guardClick}
               />
             ))}
@@ -187,21 +219,13 @@ export default function Pipeline({ loaderData }: Route.ComponentProps) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="stat">
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value}</div>
-    </div>
-  );
-}
-
 function Column({
   stage,
   items,
   active,
   isOver,
   pending,
+  search,
   onCardClick,
 }: {
   stage: { key: StageKey; label: string };
@@ -209,6 +233,7 @@ function Column({
   active: Opportunity | null;
   isOver: boolean;
   pending: Map<number, StageKey>;
+  search: string;
   onCardClick: (event: MouseEvent) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: stage.key });
@@ -235,7 +260,13 @@ function Column({
       <div className="col-body">
         {drop && <div className="col-hint">{drop === "allowed" ? "Soltar aqui" : "Não permitido"}</div>}
         {items.map((o) => (
-          <DraggableCard key={o.id} o={o} pending={pending.has(o.id)} onClick={onCardClick} />
+          <DraggableCard
+            key={o.id}
+            o={o}
+            pending={pending.has(o.id)}
+            search={search}
+            onClick={onCardClick}
+          />
         ))}
         {items.length === 0 && !drop && <div className="col-empty">Nenhuma oportunidade</div>}
       </div>
@@ -246,10 +277,12 @@ function Column({
 function DraggableCard({
   o,
   pending,
+  search,
   onClick,
 }: {
   o: Opportunity;
   pending: boolean;
+  search: string;
   onClick: (event: MouseEvent) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -262,7 +295,7 @@ function DraggableCard({
   return (
     <Link
       ref={setNodeRef}
-      to={`/opportunities/${o.id}`}
+      to={`/opportunities/${o.id}${search}`}
       preventScrollReset
       className="card"
       data-dragging={isDragging || undefined}
@@ -280,8 +313,9 @@ function DraggableCard({
 }
 
 function CardContent({ o, className }: { o: Opportunity; className: string }) {
+  // Fora da coluna (arrastando), a cor do estágio precisa vir do próprio card.
   return (
-    <div className={className}>
+    <div className={className} style={{ "--c": `var(--st-${o.stage})` } as React.CSSProperties}>
       <CardBody o={o} />
     </div>
   );
@@ -303,15 +337,30 @@ function CardBody({ o }: { o: Opportunity }) {
 
   return (
     <>
-      <span className="card-title">{o.title}</span>
+      <span className="card-top">
+        <span className="card-icon">
+          <BuildingIcon />
+        </span>
+        <span className="card-heading">
+          <span className="card-title">{o.title}</span>
+          <span className="card-amount">{money(o.amount)}</span>
+        </span>
+      </span>
       <span className="card-customer">{o.customer.name}</span>
       {badge}
       <span className="card-foot">
-        <span className="card-amount">{money(o.amount)}</span>
-        <span className="card-date">{date(o.expected_close_date)}</span>
-        <span className="card-owner" title={o.owner.name}>
-          {initials(o.owner.name)}
+        <span className="card-owner">
+          <span className="card-owner-initials" aria-hidden="true">
+            {initials(o.owner.name)}
+          </span>
+          {o.owner.name.split(" ")[0]}
         </span>
+        {o.expected_close_date && (
+          <span className="card-date" title="Previsão de fechamento">
+            <CalendarIcon />
+            {date(o.expected_close_date)}
+          </span>
+        )}
       </span>
     </>
   );

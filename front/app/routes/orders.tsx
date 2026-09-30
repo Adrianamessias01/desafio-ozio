@@ -1,4 +1,6 @@
+import { ReceiptIcon, WalletIcon } from "~/components/icons";
 import { PageError } from "~/components/page-error";
+import { Stat } from "~/components/stat";
 import { SortHeader, readSort } from "~/components/sort-header";
 import { api, loadOrThrow } from "~/lib/api.server";
 import { dateTime, money, taxId } from "~/lib/format";
@@ -35,14 +37,8 @@ export default function Orders({ loaderData }: Route.ComponentProps) {
       </div>
 
       <div className="stats">
-        <div className="stat">
-          <div className="stat-label">Pedidos</div>
-          <div className="stat-value">{orders.length}</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Valor total</div>
-          <div className="stat-value">{money(total)}</div>
-        </div>
+        <Stat label="Pedidos" value={String(orders.length)} icon={<ReceiptIcon />} tone="var(--st-proposal)" />
+        <Stat label="Valor total" value={money(total)} icon={<WalletIcon />} tone="var(--st-won)" />
       </div>
 
       <div className="table-wrap">

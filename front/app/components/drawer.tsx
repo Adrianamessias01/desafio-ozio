@@ -1,13 +1,16 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
-/** Painel lateral sobre a página. Fechar volta para `closeTo` (o pipeline, por padrão). */
+/**
+ * Painel lateral sobre a página. Fechar volta para `closeTo`; por padrão, o pipeline
+ * com a mesma busca (?q=) que estava ativa.
+ */
 export function Drawer({
   title,
   eyebrow,
   children,
   footer,
-  closeTo = "/",
+  closeTo: closeToProp,
 }: {
   title: string;
   eyebrow?: ReactNode;
@@ -16,6 +19,8 @@ export function Drawer({
   closeTo?: string;
 }) {
   const navigate = useNavigate();
+  const { search } = useLocation();
+  const closeTo = closeToProp ?? `/${search}`;
   const closeRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {

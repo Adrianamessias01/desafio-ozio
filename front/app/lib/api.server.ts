@@ -98,7 +98,11 @@ export function actionError<Extra extends object = {}>(error: unknown, extra?: E
 export const api = {
   me: () => request<UserSummary>("/me/"),
 
-  listOpportunities: () => request<Opportunity[]>("/opportunities/"),
+  /** `search`: filtra por título ou nome do cliente. */
+  listOpportunities: (search = "") =>
+    request<Opportunity[]>(
+      search ? `/opportunities/?search=${encodeURIComponent(search)}` : "/opportunities/",
+    ),
 
   getOpportunity: (id: number) => request<OpportunityDetail>(`/opportunities/${id}/`),
 
