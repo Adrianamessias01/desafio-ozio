@@ -310,3 +310,20 @@ class CustomerApiTests(ApiTestCase):
         response = self.client.get(reverse("customer-list"))
 
         self.assertEqual([c["name"] for c in response.data], ["ACME Ltda", "Beta", "Zeta"])
+
+    def test_list_orders_by_requested_field(self):
+        beta = Customer.objects.create(name="Beta", document="98765432000121")
+        Customer.objects.create(name="Zeta", document="98765432000110")
+        self.make_opportunity(amount=Decimal("100.00"))
+        self.make_opportunity(customer=beta, amount=Decimal("900.00"))
+
+        response = self.client.get(reverse("customer-list"), {"ordering": "-open_amount"})
+
+        # Beta 900, ACME 100, Zeta 0.
+        self.assertEqual([c["name"] for c in response.data], ["Beta", "ACME Ltda", "Zeta"])
+
+    def test_list_rejects_unknown_ordering(self):
+        response = self.client.get(reverse("customer-list"), {"ordering": "email"})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ordering", response.data)

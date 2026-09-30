@@ -121,7 +121,9 @@ export const api = {
   convert: (id: number) =>
     request<ConversionResult>(`/opportunities/${id}/convert/`, { method: "POST" }),
 
-  listCustomers: () => request<CustomerSummary[]>("/customers/"),
+  /** `ordering`: campo da API, com "-" na frente para decrescente (ex.: "-open_amount"). */
+  listCustomers: (ordering = "name") =>
+    request<CustomerSummary[]>(`/customers/?ordering=${encodeURIComponent(ordering)}`),
 
   createCustomer: (body: { name: string; document: string; email: string; phone: string }) =>
     request<Customer>("/customers/", { method: "POST", body }),

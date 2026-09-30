@@ -108,7 +108,14 @@ class CustomerViewSet(
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,
 ):
-    """Clientes. A listagem traz os totais do pipeline; o cadastro aceita CPF/CNPJ formatado."""
+    """
+    Clientes. A listagem traz os totais do pipeline; o cadastro aceita CPF/CNPJ formatado.
+
+    Ordenação: ?ordering=campo ou -campo (decrescente), com campo entre name, document,
+    open_count, won_count e open_amount. Padrão: name.
+    """
+
+    ORDERING_FIELDS = {"name", "document", "open_count", "won_count", "open_amount"}
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -116,9 +123,14 @@ class CustomerViewSet(
         return CustomerListSerializer
 
     def get_queryset(self):
+        ordering = self.request.query_params.get("ordering", "name")
+        if ordering.removeprefix("-") not in self.ORDERING_FIELDS:
+            raise ValidationError({"ordering": f"Ordenação inválida: {ordering}."})
+
         open_filter = Q(opportunities__stage__in=OPEN_STAGES)
         # Consultas com GROUP BY ignoram o Meta.ordering, por isso o order_by explícito.
-        return Customer.objects.order_by("name").annotate(
+        # O nome desempata, para a ordem ser estável entre valores iguais.
+        return Customer.objects.annotate(
             open_count=Count("opportunities", filter=open_filter),
             won_count=Count("opportunities", filter=Q(opportunities__stage=Stage.WON)),
             open_amount=Coalesce(
@@ -126,7 +138,7 @@ class CustomerViewSet(
                 Value(Decimal("0")),
                 output_field=DecimalField(max_digits=16, decimal_places=2),
             ),
-        )
+        ).order_by(ordering, "name")
 
 
 def _reload(pk: int) -> Opportunity:

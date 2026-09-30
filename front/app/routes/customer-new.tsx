@@ -1,4 +1,4 @@
-import { Form, redirect, useNavigation, useSearchParams } from "react-router";
+import { Form, redirect, useLocation, useNavigation, useSearchParams } from "react-router";
 
 import { Drawer } from "~/components/drawer";
 import { Field } from "~/components/field";
@@ -21,9 +21,11 @@ export async function action({ request }: Route.ActionArgs) {
 
   try {
     const customer = await api.createCustomer(values);
-    const next = new URL(request.url).searchParams.get("next");
+    const url = new URL(request.url);
     return redirect(
-      next === "opportunity" ? `/opportunities/new?customer=${customer.id}` : "/customers",
+      url.searchParams.get("next") === "opportunity"
+        ? `/opportunities/new?customer=${customer.id}`
+        : `/customers${url.search}`,
     );
   } catch (error) {
     return actionError(error, { values });
@@ -34,6 +36,7 @@ export default function NewCustomer({ actionData }: Route.ComponentProps) {
   const navigation = useNavigation();
   const [params] = useSearchParams();
   const fromOpportunity = params.get("next") === "opportunity";
+  const { search } = useLocation();
   const saving = navigation.state === "submitting";
   const fields: Record<string, string> = actionData?.fields ?? {};
   const values: Partial<Record<string, string>> = actionData?.values ?? {};
@@ -42,7 +45,7 @@ export default function NewCustomer({ actionData }: Route.ComponentProps) {
   return (
     <Drawer
       title="Novo cliente"
-      closeTo={fromOpportunity ? "/opportunities/new" : "/customers"}
+      closeTo={fromOpportunity ? "/opportunities/new" : `/customers${search}`}
       footer={
         <button type="submit" form="new-customer" className="btn btn-primary" disabled={saving}>
           {saving ? "Salvando…" : fromOpportunity ? "Salvar e voltar à oportunidade" : "Cadastrar cliente"}
