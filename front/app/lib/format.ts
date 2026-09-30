@@ -50,6 +50,20 @@ export function initials(name: string) {
     .join("");
 }
 
+/**
+ * "há 5 min", "há 3 h", "ontem" ou a data. `now` vem do loader, para servidor e navegador
+ * gerarem o mesmo texto.
+ */
+export function relativeTime(iso: string, now: number) {
+  const minutes = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 60_000));
+  if (minutes < 1) return "agora há pouco";
+  if (minutes < 60) return `há ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `há ${hours} h`;
+  if (hours < 48) return "ontem";
+  return dateTime(iso).slice(0, 10);
+}
+
 const isoDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE });
 
 /** Hoje no fuso de São Paulo, no formato da API ("2026-09-30"). */

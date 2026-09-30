@@ -1165,6 +1165,86 @@ tr:hover .link-action,
   text-decoration: underline;
 }
 
+/* ---------- pedidos ---------- */
+.row-link {
+  cursor: pointer;
+}
+.order-tag {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.order-tag:hover {
+  text-decoration: underline;
+}
+.items-cell {
+  max-width: 260px;
+  font-size: 13px;
+}
+.time-cell {
+  white-space: nowrap;
+  border-bottom: 1px dotted var(--line);
+}
+/* Situação do pedido com cor própria: aberto, faturado, cancelado. */
+.status-open {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.status-invoiced {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.status-cancelled {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.origin-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.origin-card:hover {
+  border-color: var(--accent);
+}
+.origin-card > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.origin-title {
+  font-weight: 600;
+}
+.items-table {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.items-table table {
+  min-width: 0;
+}
+.items-table th,
+.items-table td {
+  padding: 9px 12px;
+}
+.items-table tfoot td {
+  font-weight: 700;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface-2) 50%, var(--surface));
+}
+
 /* ---------- tabelas ---------- */
 .table-wrap {
   overflow-x: auto;

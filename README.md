@@ -10,7 +10,7 @@ convertem uma oportunidade ganha em um pedido no ERP.
 | Arrastando: colunas permitidas destacadas | ERP fora do ar: erro tratado na tela |
 | --- | --- |
 | ![Arrastando um card](docs/screenshots/kanban-arrastando.png) | ![Erro do ERP](docs/screenshots/erro-erp.png) |
-| **Oportunidade convertida (tema escuro)** | **Pedidos gerados no ERP** |
+| **Oportunidade convertida (tema escuro)** | **Pedido no ERP, com a oportunidade de origem** |
 | ![Convertida](docs/screenshots/convertida-tema-escuro.png) | ![Pedidos](docs/screenshots/pedidos.png) |
 | **Login por vendedor** | **Celular** |
 | ![Login](docs/screenshots/login.png) | ![Celular](docs/screenshots/celular.png) |
@@ -219,7 +219,8 @@ Instruções detalhadas em [`back/README.md`](back/README.md) e [`front/README.m
    Oportunidades já convertidas em pedido não podem ser excluídas.
 5. **Conversão:** mova "Migração de ERP legado" de Negociação para Ganho, clique no card e use
    "Converter em pedido". O pedido aparece em **Pedidos**, e "Converter novamente" devolve
-   o mesmo número, sem duplicar.
+   o mesmo número, sem duplicar. Clicando no pedido, a gaveta mostra os itens e a
+   oportunidade de origem, com link de volta para ela.
 6. **ERP fora do ar:** suba a API com a falha simulada e tente converter outra oportunidade
    ganha. A tela mostra o erro, nada é gravado e o botão vira "Tentar novamente".
 

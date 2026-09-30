@@ -183,6 +183,8 @@ function createApi(token: string) {
       request<Customer>(token, "/customers/", { method: "POST", body }),
 
     /** `ordering`: campo da API, com "-" na frente para decrescente (ex.: "-created_at"). */
+    getOrder: (id: number) => request<Order>(token, `/orders/${id}/`),
+
     listOrders: (ordering = "-created_at") =>
       request<Order[]>(token, `/orders/?ordering=${encodeURIComponent(ordering)}`),
   };

@@ -11,6 +11,6 @@ export default [
       route("opportunities/:id", "routes/opportunity-detail.tsx"),
     ]),
     route("customers", "routes/customers.tsx", [route("new", "routes/customer-new.tsx")]),
-    route("orders", "routes/orders.tsx"),
+    route("orders", "routes/orders.tsx", [route(":id", "routes/order-detail.tsx")]),
   ]),
 ] satisfies RouteConfig;

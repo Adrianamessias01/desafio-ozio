@@ -96,7 +96,8 @@ npm run typecheck
 | `/opportunities/:id` | Detalhe, mudança de estágio, conversão e exclusão  |
 | `/customers`         | Clientes com indicadores, filtro instantâneo por nome, CNPJ ou e-mail, barra proporcional ao valor em aberto e atalho "Ver no pipeline". Ordenável pelo título da coluna (`?sort=` e `?dir=` na URL) |
 | `/customers/new`     | Cadastro de cliente (gaveta). Com `?next=opportunity`, volta ao cadastro de oportunidade com o cliente selecionado |
-| `/orders`            | Pedidos gerados no ERP, ordenáveis pelo título da coluna (padrão: mais recentes) |
+| `/orders`            | Pedidos do ERP com indicadores (total, ticket médio, último pedido), filtro por número, cliente ou CNPJ e ordenação pelo título da coluna |
+| `/orders/:id`        | Detalhe do pedido (gaveta): itens, total, situação e a oportunidade de origem, com link para ela |
 
 ## Conversão em pedido
 
